@@ -115,7 +115,7 @@ function TabButton({
       className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition ${active ? "shadow-[0_6px_20px_var(--shadow)]" : ""}`}
       style={
         active
-          ? { background: "var(--primary)", color: "#000000" }
+          ? { background: "var(--primary)", color: "#ffffff" }
           : { color: "var(--text-muted)" }
       }
     >

@@ -148,7 +148,7 @@ function adminAction(
     .then(async (res) => {
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error || "Action failed");
-      setNotice(action === "clearRatings" ? "All ratings cleared." : "Demo database reset to seeded users and ratings.");
+      setNotice(action === "clearRatings" ? "All ratings cleared." : "Database reset complete.");
       reload();
     })
     .catch((err: unknown) => setError(err instanceof Error ? err.message : "Action failed"));

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { EqualizerBackground } from "@/components/equalizer-background";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,10 +23,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top,var(--hero-glow),transparent_28%),linear-gradient(180deg,var(--shell-from),var(--shell-mid)_48%,var(--shell-to))]">
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{
+        position: "relative",
+        background:
+          "radial-gradient(circle at top, var(--hero-glow), transparent 28%), linear-gradient(180deg, var(--shell-from), var(--shell-mid) 48%, var(--shell-to))",
+      }}
+    >
+      <EqualizerBackground />
       <div
         className="w-full max-w-sm rounded-3xl border p-8 shadow-[0_30px_90px_var(--shadow)] backdrop-blur"
         style={{
+          position: "relative",
+          zIndex: 10,
           borderColor: "var(--border)",
           background:
             "linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 86%, white 14%), var(--surface))",

@@ -170,7 +170,7 @@ function RegisterFormInner() {
         }}
       >
         <h1 className="pb-3 text-xl font-semibold tracking-tight text-[var(--foreground)] text-center">
-          Create account
+          Create your EnLive account
         </h1>
 
         <form
@@ -199,7 +199,7 @@ function RegisterFormInner() {
                   email,
                   password,
                   role,
-                  location: address,
+                  location: role === "venue" ? address : undefined,
                   genre: role === "artist" ? genre || undefined : undefined,
                   recaptchaToken,
                 }),
@@ -369,11 +369,11 @@ function RegisterFormInner() {
                 </select>
               </Field>
             ) : (
-              <Field label="Address" htmlFor="address">
+              <Field label="Town / City" htmlFor="address">
                 <input
                   id="address"
                   type="text"
-                  placeholder="12 Market Street, Manchester"
+                  placeholder="Manchester"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   required

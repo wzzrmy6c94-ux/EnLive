@@ -23,7 +23,7 @@ echo ""
 read -rp "App directory path [/var/www/enlive]: " APP_DIR
 APP_DIR="${APP_DIR:-/var/www/enlive}"
 
-read -rp "Git repo URL (or leave blank to skip clone): " GIT_REPO
+GIT_REPO="https://github.com/wzzrmy6c94-ux/EnLive.git"
 
 read -rp "Domain / IP for the site (e.g. enlive.example.com): " DOMAIN
 DOMAIN="${DOMAIN:-localhost}"
@@ -91,7 +91,8 @@ fi
 if ! command -v pm2 &>/dev/null; then
   info "Installing PM2..."
   npm install -g pm2 --silent
-  success "PM2 installed."
+  pm2 install pm2-logrotate --silent
+  success "PM2 and logrotate installed."
 fi
 
 # ─── 5. PostgreSQL setup ─────────────────────
@@ -123,37 +124,48 @@ fi
 cd "$APP_DIR"
 [ -f package.json ] || die "No package.json found in $APP_DIR. Clone the repo first or set the correct path."
 
-# ─── 7. Environment file ─────────────────────
+# ─── 7. Secrets and Keys ──────────────────────
+info "Setting up secrets..."
+read -rp "Google reCAPTCHA Site Key (optional): " RECAPTCHA_SITE_KEY
+read -rp "Google reCAPTCHA Secret Key (optional): " RECAPTCHA_SECRET_KEY
+
+# Generate a random session secret if not already set
+SESSION_SECRET=$(openssl rand -hex 32)
+
+# ─── 8. Environment file ─────────────────────
 ENV_FILE="$APP_DIR/.env.local"
 if [ ! -f "$ENV_FILE" ]; then
   info "Writing .env.local..."
   cat > "$ENV_FILE" <<EOF
 DATABASE_URL=${DATABASE_URL}
 NEXT_PUBLIC_APP_URL=https://${DOMAIN}
+ENLIVE_SESSION_SECRET=${SESSION_SECRET}
+RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY}
+RECAPTCHA_SECRET_KEY=${RECAPTCHA_SECRET_KEY}
 NODE_ENV=production
 PORT=${APP_PORT}
 EOF
   success ".env.local created."
 else
-  warn ".env.local already exists — not overwriting. Ensure DATABASE_URL is set."
+  warn ".env.local already exists — not overwriting. Ensure all variables are correctly set."
 fi
 
-# ─── 8. Install dependencies ─────────────────
+# ─── 9. Install dependencies ─────────────────
 info "Installing npm dependencies (this may take a few minutes)..."
 npm ci --prefer-offline 2>&1 | tail -5
 success "Dependencies installed."
 
-# ─── 9. DB migrations ────────────────────────
+# ─── 10. DB migrations ────────────────────────
 info "Running database migrations..."
 DATABASE_URL="$DATABASE_URL" npm run db:migrate
 success "Migrations applied."
 
-# ─── 10. Build ───────────────────────────────
+# ─── 11. Build ───────────────────────────────
 info "Building Next.js app (swap is active — this is safe on 2 GB RAM)..."
 NODE_ENV=production npm run build
 success "Build complete."
 
-# ─── 11. PM2 service ─────────────────────────
+# ─── 12. PM2 service ─────────────────────────
 info "Configuring PM2 process..."
 pm2 delete enlive 2>/dev/null || true
 pm2 start npm --name enlive -- start -- -p "$APP_PORT"
@@ -161,13 +173,23 @@ pm2 save
 pm2 startup systemd -u root --hp /root | tail -1 | bash || true
 success "PM2 process 'enlive' started on port $APP_PORT."
 
-# ─── 12. Nginx reverse proxy ─────────────────
+# ─── 13. Nginx reverse proxy ─────────────────
 info "Writing nginx config..."
 NGINX_CONF="/etc/nginx/sites-available/enlive"
 cat > "$NGINX_CONF" <<NGINX
 server {
     listen 80;
     server_name ${DOMAIN};
+
+    # Gzip Compression
+    gzip on;
+    gzip_proxied any;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    gzip_vary on;
+    gzip_disable "msie6";
+
+    # Optimization
+    client_max_body_size 64M;
 
     location / {
         proxy_pass         http://127.0.0.1:${APP_PORT};
@@ -188,24 +210,72 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl restart nginx
 success "Nginx configured for ${DOMAIN}."
 
-# ─── 13. Firewall ────────────────────────────
+# ─── 14. Firewall ────────────────────────────
 info "Configuring UFW firewall..."
 ufw allow OpenSSH
 ufw allow 'Nginx Full'
 ufw --force enable
 success "Firewall enabled (SSH + HTTP/HTTPS open)."
 
+# ─── 15. SSL / HTTPS (Optional) ───────────────
+if [[ "$DOMAIN" != "localhost" && "$DOMAIN" != [0-9]* ]]; then
+  echo ""
+  read -rp "Enable HTTPS via SSL (Certbot)? [y/N]: " ENABLE_SSL
+  if [[ "$ENABLE_SSL" =~ ^[Yy]$ ]]; then
+    info "Installing Certbot..."
+    apt-get install -y certbot python3-certbot-nginx -qq
+    
+    read -rp "Email for SSL renewal alerts: " SSL_EMAIL
+    if [ -n "$SSL_EMAIL" ]; then
+      certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$SSL_EMAIL" --redirect
+    else
+      certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect
+    fi
+    success "HTTPS enabled for $DOMAIN."
+  else
+    warn "Skipping SSL. Site will be HTTP only."
+  fi
+else
+  warn "Skipping SSL (Domain is localhost or an IP address)."
+fi
+
+# ─── 16. Health Check ──────────────────────────
+info "Verifying health..."
+sleep 5 # Give PM2 a moment to fully initialize
+if curl -sL --retry 3 --retry-delay 2 http://localhost:${APP_PORT} > /dev/null; then
+  success "Application is responding on port ${APP_PORT}."
+else
+  warn "Application didn't respond quickly. Check 'pm2 logs enlive' for details."
+fi
+
+# Check Postgres status
+if systemctl is-active --quiet postgresql; then
+  success "PostgreSQL is active."
+fi
+
+# ─── 17. Deploy Helper ─────────────────────────
+info "Creating deploy.sh helper..."
+DEPLOY_SCRIPT="${APP_DIR}/deploy.sh"
+cat > "$DEPLOY_SCRIPT" <<'DEPLOYSCRIPT'
+#!/usr/bin/env bash
+set -e
+echo "🚀 Updating EnLive..."
+git pull
+npm install
+npm run build
+pm2 reload enlive
+echo "✅ Deployment complete!"
+DEPLOYSCRIPT
+chmod +x "$DEPLOY_SCRIPT"
+success "Deploy script created at $DEPLOY_SCRIPT"
+
 # ─── Done ─────────────────────────────────────
 echo ""
 echo -e "${GREEN}━━━  Install complete!  ━━━${NC}"
 echo ""
-echo -e "  Site         : http://${DOMAIN}"
+echo -e "  Site         : https://${DOMAIN} (if SSL enabled)"
 echo -e "  App dir      : ${APP_DIR}"
 echo -e "  PM2 status   : pm2 status"
 echo -e "  App logs     : pm2 logs enlive"
-echo -e "  Nginx logs   : journalctl -u nginx -f"
-echo ""
-echo -e "  To enable HTTPS:"
-echo -e "    apt install certbot python3-certbot-nginx -y"
-echo -e "    certbot --nginx -d ${DOMAIN}"
+echo -e "  Update site  : ./deploy.sh"
 echo ""

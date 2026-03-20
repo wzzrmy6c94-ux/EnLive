@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "@/components/nav-link";
-import EnliveLogoLight from "@/app/assets/enlive-logo-light.png";
-import EnliveLogoDark from "@/app/assets/enlive-logo-dark.png";
+import EnliveLogoRed from "@/app/assets/enlive-logo-red.png";
 
 export function UserHeader({
   title,
@@ -50,7 +49,7 @@ export function UserHeader({
   }, []);
 
   useEffect(() => {
-    function onPointerDown(event: MouseEvent) {
+    const onPointerDown = (event: MouseEvent) => {
       if (!accountRef.current) return;
       if (!accountRef.current.contains(event.target as Node)) {
         setAccountOpen(false);
@@ -72,26 +71,24 @@ export function UserHeader({
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         {!hideHeroHeader ? (
           <div>
-            <Image src={EnliveLogoLight} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain dark:hidden" />
-            <Image src={EnliveLogoDark} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain hidden dark:block" />
+            <Image src={EnliveLogoRed} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain" />
           </div>
         ) : (
           <>
-            <Image src={EnliveLogoLight} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain dark:hidden" />
-            <Image src={EnliveLogoDark} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain hidden dark:block" />
+            <Image src={EnliveLogoRed} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain" />
           </>
         )}
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {headerMode === "public" ? (
             <>
               <NavLink href="/">Leaderboard</NavLink>
-              <NavLink href="/admin/auth/login">Login</NavLink>
+              <NavLink href="/users/auth/login">Login</NavLink>
             </>
           ) : (
             <>
               {sessionUserId && (
                 <Link
-                  href={`/profile/${sessionUserId}`}
+                  href={`/target/${sessionUserId}`}
                   className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition hover:opacity-80"
                   style={{
                     borderColor: "var(--border)",
@@ -156,7 +153,7 @@ export function UserHeader({
                     }}
                   >
                     <Link
-                      href={sessionUserId ? `/profile/${sessionUserId}` : "#"}
+                      href={sessionUserId ? `/target/${sessionUserId}` : "#"}
                       onClick={() => setAccountOpen(false)}
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
                     >

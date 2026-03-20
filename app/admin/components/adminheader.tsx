@@ -10,6 +10,7 @@ import EnliveLogoDark from "@/app/assets/enlive-logo-dark.png";
 export function AdminHeader() {
   const router = useRouter();
   const pathname = usePathname();
+  if (pathname === "/admin/auth/login") return null;
   const [sessionName, setSessionName] = useState("Admin");
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement | null>(null);
@@ -24,7 +25,7 @@ export function AdminHeader() {
   }, []);
 
   useEffect(() => {
-    function onPointerDown(event: MouseEvent) {
+    const onPointerDown = (event: MouseEvent) => {
       if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
         setAccountOpen(false);
       }

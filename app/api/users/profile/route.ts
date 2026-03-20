@@ -12,6 +12,7 @@ const updateSchema = z.object({
   name: z.string().transform(sanitizeText).pipe(z.string().min(1).max(120)),
   location: z.string().transform(sanitizeText).pipe(z.string().min(1).max(120)),
   genre: z.string().transform(sanitizeText).pipe(z.string().max(80)).optional(),
+  bio: z.string().transform(sanitizeText).pipe(z.string().max(500)).optional(),
 });
 
 export const GET = withApi(async (request: NextRequest, { requestId }) => {

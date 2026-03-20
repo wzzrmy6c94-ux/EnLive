@@ -12,7 +12,11 @@ const registerSchema = z.object({
   email: z.string().transform(sanitizeEmail).pipe(z.string().email().max(320)),
   password: z.string().transform(sanitizeText).pipe(z.string().min(6).max(200)),
   role: z.enum(["venue", "artist"]),
-  location: z.string().transform(sanitizeText).pipe(z.string().min(1).max(120)),
+  location: z
+    .string()
+    .transform(sanitizeText)
+    .pipe(z.string().max(120))
+    .optional(),
   genre: z.string().transform(sanitizeText).pipe(z.string().max(80)).optional(),
   recaptchaToken: z.string().min(1),
 });
@@ -59,6 +63,14 @@ export async function POST(request: NextRequest) {
       );
     }
     const { name, email, password, role, location, genre, recaptchaToken } = parsed.data;
+
+    if (role === "venue" && !location) {
+      logWarn("auth.register.bad_request", { requestId, role });
+      return withRequestId(
+        NextResponse.json({ error: "Town is required for venues." }, { status: 400 }),
+        requestId,
+      );
+    }
 
     const recaptchaAction = role === "venue" ? "register_venue" : "register_artist";
     const recaptchaOk = await verifyRecaptcha(recaptchaToken, recaptchaAction).catch(() => false);
