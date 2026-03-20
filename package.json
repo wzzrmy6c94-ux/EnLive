@@ -30,8 +30,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autocannon": "^8.0.0",
-    "eslint": "^10.0.2",
-    "eslint-config-next": "^12.0.4",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
