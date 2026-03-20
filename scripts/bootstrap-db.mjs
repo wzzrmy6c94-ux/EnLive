@@ -62,7 +62,7 @@ const seedUsers = [
   ['city-13', 'Birmingham', 'city13@enlive.local', hash('demo123'), 'city', 'Birmingham', '2026-02-20T18:00:00.000Z'],
   ['city-14', 'Bristol', 'city14@enlive.local', hash('demo123'), 'city', 'Bristol', '2026-02-20T18:00:00.000Z'],
   ['city-15', 'Glasgow', 'city15@enlive.local', hash('demo123'), 'city', 'Glasgow', '2026-02-20T18:00:00.000Z'],
-  ['admin-enlive', 'Enlive Admin', 'admin@enlive.local', hash('demo123'), 'admin', 'Chorley', '2026-02-20T18:00:00.000Z'],
+  ['admin-enlive', 'Enlive Admin', 'admin@enlive.local', hash('secret123'), 'admin', 'Chorley', '2026-02-20T18:00:00.000Z'],
 ];
 
 const seedRatings = [

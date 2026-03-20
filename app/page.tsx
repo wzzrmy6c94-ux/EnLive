@@ -1,10 +1,5 @@
-// NO "use client" here
-import LeaderboardClient from "./leaderboard/page";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return (
-    <main className="grid gap-4">
-      <LeaderboardClient />
-    </main>
-  );
+  redirect("/under-construction");
 }

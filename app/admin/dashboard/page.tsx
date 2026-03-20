@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { EnliveShell, Panel } from "@/components/enlive-shell";
+import { Panel } from "@/components/enlive-shell";
 
 type TargetType = "venue" | "artist";
 
@@ -29,7 +30,6 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [ratings, setRatings] = useState<AdminRatingRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: "", email: "", role: "venue" as TargetType, location: "Chorley" });
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,45 +51,31 @@ export default function AdminDashboardPage() {
   }, []);
 
   return (
-    <EnliveShell title="Admin Panel" subtitle="Server-backed admin operations for venues, artists, and ratings.">
-      <main className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+    <main className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="xl:col-span-2">
+        <h1 className="text-2xl font-semibold tracking-tight">Admin Panel</h1>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
+          Server-backed admin operations for venues, artists, and ratings.
+        </p>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr] xl:col-span-2">
         <div className="grid gap-4">
           <Panel className="shadow-[0_18px_60px_var(--shadow)]">
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Add venue / artist</h2>
-            <form
-              className="mt-3 space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setError(null);
-                setNotice(null);
-                void fetch("/api/admin/users", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(form),
-                })
-                  .then(async (res) => {
-                    const data = (await res.json()) as { error?: string; user?: { name: string; role: string } };
-                    if (!res.ok || !data.user) throw new Error(data.error || "Failed to create user");
-                    setNotice(`${data.user.name} added (${data.user.role}). Password defaults to demo123.`);
-                    setForm((prev) => ({ ...prev, name: "", email: "" }));
-                    load();
-                  })
-                  .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to create user"));
-              }}
+            <h2 className="text-base font-semibold text-[var(--foreground)]">Add user</h2>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              Create a new venue or artist with a shareable EnLive Unique ID in the format
+              <span className="font-medium text-[var(--foreground)]"> A123456 </span>
+              or
+              <span className="font-medium text-[var(--foreground)]"> V123456</span>, plus type-specific settings.
+            </p>
+            <Link
+              href="/admin/users/add"
+              className="mt-4 inline-flex rounded-full px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+              style={{ background: "var(--primary)", color: "var(--button-text)" }}
             >
-              <input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Name" className="w-full rounded-xl border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", background: "var(--surface-elevated)", color: "var(--foreground)" }} />
-              <input value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" className="w-full rounded-xl border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", background: "var(--surface-elevated)", color: "var(--foreground)" }} />
-              <div className="grid grid-cols-2 gap-3">
-                <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as TargetType }))} className="rounded-xl border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", background: "var(--surface-elevated)", color: "var(--foreground)" }}>
-                  <option value="venue">Venue</option>
-                  <option value="artist">Artist/Band</option>
-                </select>
-                <input value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} placeholder="Town" className="rounded-xl border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", background: "var(--surface-elevated)", color: "var(--foreground)" }} />
-              </div>
-              {error ? <p className="text-sm text-[var(--primary)]">{error}</p> : null}
-              {notice ? <p className="text-sm text-[var(--primary)]">{notice}</p> : null}
-              <button type="submit" className="rounded-xl px-4 py-2 text-sm font-semibold transition" style={{ background: "var(--primary)", color: "var(--button-text)" }}>Add record</button>
-            </form>
+              Open add user form
+            </Link>
           </Panel>
 
           <Panel>
@@ -141,8 +127,8 @@ export default function AdminDashboardPage() {
             </div>
           </Panel>
         </div>
-      </main>
-    </EnliveShell>
+      </div>
+    </main>
   );
 }
 

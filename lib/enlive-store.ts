@@ -106,7 +106,7 @@ const seedUsers: User[] = [
     id: "admin-enlive",
     name: "Enlive Admin",
     email: "admin@enlive.local",
-    password: "admin123",
+    password: "secret123",
     role: "admin",
     location: "Chorley",
     createdAt: "2026-02-20T18:30:00.000Z",

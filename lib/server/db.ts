@@ -6,6 +6,7 @@ export type TargetType = "venue" | "artist" | "city";
 
 type UserRow = {
   id: string;
+  enlive_uid?: string;
   name: string;
   email: string;
   password_hash: string;
@@ -13,6 +14,7 @@ type UserRow = {
   location: string;
   genre?: string;
   country?: string;
+  settings_json?: string | null;
   created_at: string;
 };
 
@@ -44,6 +46,26 @@ function mean(values: number[]) {
   return Math.round((values.reduce((sum, n) => sum + n, 0) / values.length) * 100) / 100;
 }
 
+function defaultUserSettings(role: TargetType) {
+  return role === "artist"
+    ? { genre: "Unknown", showcaseEnabled: true, socialLinks: false }
+    : { capacity: null, bookingOpen: true, wheelchairAccess: false };
+}
+
+function isValidEnliveUid(role: TargetType, enliveUid: string) {
+  const normalized = enliveUid.trim().toUpperCase();
+  return new RegExp(`^${role === "artist" ? "A" : "V"}\\d{6}$`).test(normalized);
+}
+
+function nextEnliveUid(role: TargetType, existing: string[]) {
+  const prefix = role === "artist" ? "A" : "V";
+  const nextNumber = existing
+    .map((uid) => Number(uid.slice(1)))
+    .filter((value) => Number.isFinite(value))
+    .reduce((max, value) => Math.max(max, value), 0) + 1;
+  return `${prefix}${String(nextNumber).padStart(6, "0")}`;
+}
+
 function getPool() {
   if (poolSingleton) return poolSingleton;
 
@@ -61,7 +83,7 @@ function getPool() {
 
 function seedUsers(): UserRow[] {
   return [
-    { id: "artist-1", name: "Neon Harbor", email: "artist1@enlive.local", password_hash: hashPassword("demo123"), role: "artist", location: "Glasgow", genre: "Synthpop", created_at: "2026-02-20T18:00:00.000Z" },
+    { id: "artist-1", enlive_uid: "artist-1", name: "Neon Harbor", email: "artist1@enlive.local", password_hash: hashPassword("demo123"), role: "artist", location: "Glasgow", genre: "Synthpop", settings_json: JSON.stringify({ genre: "Synthpop", showcaseEnabled: true, socialLinks: true }), created_at: "2026-02-20T18:00:00.000Z" },
     { id: "artist-2", name: "Juno Vale", email: "artist2@enlive.local", password_hash: hashPassword("demo123"), role: "artist", location: "Blackburn", genre: "Indie Rock", created_at: "2026-02-20T18:00:00.000Z" },
     { id: "artist-3", name: "The Midnight Echo", email: "artist3@enlive.local", password_hash: hashPassword("demo123"), role: "artist", location: "Manchester", genre: "Jazz Fusion", created_at: "2026-02-20T18:00:00.000Z" },
     { id: "artist-4", name: "Solar Flare", email: "artist4@enlive.local", password_hash: hashPassword("demo123"), role: "artist", location: "Birmingham", genre: "Electronic", created_at: "2026-02-20T18:00:00.000Z" },
@@ -106,7 +128,7 @@ function seedUsers(): UserRow[] {
     { id: "city-13", name: "Birmingham", email: "city13@enlive.local", password_hash: hashPassword("demo123"), role: "city", location: "Birmingham", genre: "City", country: "United Kingdom", created_at: "2026-02-20T18:00:00.000Z" },
     { id: "city-14", name: "Bristol", email: "city14@enlive.local", password_hash: hashPassword("demo123"), role: "city", location: "Bristol", genre: "City", country: "United Kingdom", created_at: "2026-02-20T18:00:00.000Z" },
     { id: "city-15", name: "Glasgow", email: "city15@enlive.local", password_hash: hashPassword("demo123"), role: "city", location: "Glasgow", genre: "City", country: "United Kingdom", created_at: "2026-02-20T18:00:00.000Z" },
-    { id: "admin-enlive", name: "Enlive Admin", email: "admin@enlive.local", password_hash: hashPassword("demo123"), role: "admin", location: "Chorley", genre: "Admin", created_at: "2026-02-20T18:00:00.000Z" },
+    { id: "admin-enlive", enlive_uid: "admin-enlive", name: "Enlive Admin", email: "admin@enlive.local", password_hash: hashPassword("secret123"), role: "admin", location: "Chorley", genre: "Admin", settings_json: JSON.stringify({}), created_at: "2026-02-20T18:00:00.000Z" },
   ];
 }
 
@@ -275,9 +297,21 @@ async function ensureInitialized() {
       if (Number(countRes.rows[0]?.count ?? 0) === 0) {
         for (const u of seedUsers()) {
           await client.query(
-            `INSERT INTO users (id, name, email, password_hash, role, location, genre, country, created_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [u.id, u.name, u.email, u.password_hash, u.role, u.location, u.genre ?? null, u.country ?? null, u.created_at],
+            `INSERT INTO users (id, enlive_uid, name, email, password_hash, role, location, genre, country, settings_json, created_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            [
+              u.id,
+              u.enlive_uid ?? u.id,
+              u.name,
+              u.email,
+              u.password_hash,
+              u.role,
+              u.location,
+              u.genre ?? null,
+              u.country ?? null,
+              u.settings_json ?? JSON.stringify(u.role === "admin" ? {} : defaultUserSettings(u.role)),
+              u.created_at,
+            ],
           );
         }
         for (const r of seedRatings()) {
@@ -479,7 +513,7 @@ export async function insertRating(input: {
 export async function authenticateUser(email: string, password: string) {
   return withDb(async (db) => {
     const res = await db.query<UserRow>(
-      `SELECT id, name, email, password_hash, role, location, created_at FROM users WHERE lower(email) = lower($1) LIMIT 1`,
+      `SELECT id, enlive_uid, name, email, password_hash, role, location, created_at FROM users WHERE lower(email) = lower($1) LIMIT 1`,
       [email.trim()],
     );
     const user = res.rows[0];
@@ -499,7 +533,7 @@ export async function authenticateUser(email: string, password: string) {
 export async function getUserById(id: string) {
   return withDb(async (db) => {
     const res = await db.query<Omit<UserRow, "password_hash">>(
-      `SELECT id, name, email, role, location, created_at FROM users WHERE id = $1 LIMIT 1`,
+      `SELECT id, enlive_uid, name, email, role, location, created_at FROM users WHERE id = $1 LIMIT 1`,
       [id],
     );
     const user = res.rows[0];
@@ -519,6 +553,7 @@ export async function listUsersForAdmin() {
   return withDb(async (db) => {
     const res = await db.query<{
       id: string;
+      enlive_uid: string;
       name: string;
       role: TargetType;
       location: string;
@@ -527,7 +562,7 @@ export async function listUsersForAdmin() {
       rating_count: string;
     }>(
       `SELECT
-         u.id,u.name,u.role,u.location,u.created_at,
+         u.id,u.enlive_uid,u.name,u.role,u.location,u.created_at,
          ROUND(AVG(r.overall_score)::numeric,2)::float8 AS average_score,
          COUNT(r.id)::text AS rating_count
        FROM users u
@@ -539,6 +574,7 @@ export async function listUsersForAdmin() {
 
     return res.rows.map((u) => ({
       id: u.id,
+      enliveUid: u.enlive_uid,
       name: u.name,
       role: u.role,
       location: u.location,
@@ -585,29 +621,63 @@ export async function createManagedUser(input: {
   email: string;
   role: TargetType;
   location: string;
+  enliveUid?: string;
   password?: string;
+  genre?: string;
+  settings?: Record<string, unknown>;
 }) {
   return withDb(async (db) => {
     const name = input.name.trim();
     const email = input.email.trim().toLowerCase();
     const location = input.location.trim();
+    const requestedUid = input.enliveUid?.trim().toUpperCase();
     if (!name || !email || !location) return { ok: false as const, error: "Name, email and town are required." };
+    let enliveUid = requestedUid;
+    if (!enliveUid) {
+      const existing = await db.query<{ enlive_uid: string }>(
+        `SELECT enlive_uid FROM users WHERE enlive_uid LIKE $1 ORDER BY enlive_uid DESC`,
+        [input.role === "artist" ? "A%" : "V%"],
+      );
+      enliveUid = nextEnliveUid(input.role, existing.rows.map((row) => row.enlive_uid));
+    }
+    if (!isValidEnliveUid(input.role, enliveUid)) {
+      return {
+        ok: false as const,
+        error: input.role === "artist" ? "Artist IDs must look like A123456." : "Venue IDs must look like V123456.",
+      };
+    }
 
     const exists = await db.query<{ id: string }>(`SELECT id FROM users WHERE lower(email) = lower($1)`, [email]);
     if (exists.rows[0]) return { ok: false as const, error: "Email already exists." };
+    const uidExists = await db.query<{ id: string }>(`SELECT id FROM users WHERE lower(enlive_uid) = lower($1)`, [enliveUid]);
+    if (uidExists.rows[0]) return { ok: false as const, error: "EnLive Unique ID already exists." };
 
     const id = `${input.role}-${crypto.randomUUID()}`;
     const createdAt = new Date().toISOString();
     const password = input.password?.trim() || "demo123";
     const passwordHash = hashPassword(password);
-    const genre = input.role === 'artist' ? 'Unknown' : (input.role === 'venue' ? 'Live Music Venue' : 'City');
+    const genre = input.genre?.trim() || (input.role === 'artist' ? 'Unknown' : 'Live Music Venue');
+    const settings = input.settings ?? defaultUserSettings(input.role);
 
     await db.query(
-      `INSERT INTO users (id,name,email,password_hash,role,location,genre,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [id, name, email, passwordHash, input.role, location, genre, createdAt],
+      `INSERT INTO users (id,enlive_uid,name,email,password_hash,role,location,genre,settings_json,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [id, enliveUid, name, email, passwordHash, input.role, location, genre, JSON.stringify(settings), createdAt],
     );
 
-    return { ok: true as const, user: { id, name, email, role: input.role, location, createdAt }, password };
+    return { ok: true as const, user: { id, enliveUid, name, email, role: input.role, location, createdAt }, password, settings };
+  });
+}
+
+export async function updateUserProfile(id: string, input: { name: string; location: string; genre?: string }) {
+  return withDb(async (db) => {
+    const name = input.name.trim();
+    const location = input.location.trim();
+    if (!name || !location) return { ok: false as const, error: "Name and location are required." };
+    await db.query(
+      `UPDATE users SET name = $1, location = $2, genre = $3 WHERE id = $4`,
+      [name, location, input.genre?.trim() || null, id],
+    );
+    return { ok: true as const };
   });
 }
 
@@ -625,8 +695,20 @@ export async function resetDatabaseToSeed() {
       await db.query(`DELETE FROM users`);
       for (const u of seedUsers()) {
         await db.query(
-          `INSERT INTO users (id,name,email,password_hash,role,location,genre,country,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [u.id, u.name, u.email, u.password_hash, u.role, u.location, u.genre ?? null, u.country ?? null, u.created_at],
+          `INSERT INTO users (id,enlive_uid,name,email,password_hash,role,location,genre,country,settings_json,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          [
+            u.id,
+            u.enlive_uid ?? u.id,
+            u.name,
+            u.email,
+            u.password_hash,
+            u.role,
+            u.location,
+            u.genre ?? null,
+            u.country ?? null,
+            u.settings_json ?? JSON.stringify(u.role === "admin" ? {} : defaultUserSettings(u.role)),
+            u.created_at,
+          ],
         );
       }
       for (const r of seedRatings()) {

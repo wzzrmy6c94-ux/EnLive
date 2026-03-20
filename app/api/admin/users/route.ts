@@ -13,6 +13,7 @@ const adminCreateUserSchema = z.object({
   email: z.string().transform(sanitizeEmail).pipe(z.string().email().max(320)),
   role: z.enum(["venue", "artist"]),
   location: z.string().transform(sanitizeText).pipe(z.string().min(1).max(120)),
+  settings: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -31,7 +32,13 @@ export async function POST(request: NextRequest) {
   }
   const payload = parsed.data;
 
-  const result = await createManagedUser({ name: payload.name, email: payload.email, role: payload.role, location: payload.location });
+  const result = await createManagedUser({
+    name: payload.name,
+    email: payload.email,
+    role: payload.role,
+    location: payload.location,
+    settings: payload.settings,
+  });
   if (!result.ok) {
     logWarn("admin.users.create_failed", { requestId, adminUserId: session.userId, reason: result.error });
     return withRequestId(NextResponse.json({ error: result.error }, { status: 400 }), requestId);
