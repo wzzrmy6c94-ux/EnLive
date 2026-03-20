@@ -1,252 +1,168 @@
-# 🎵 Live Music Ranking Platform – Production Checklist (MVP)
+# Enlive — Live Music Rating & Leaderboard Platform
 
-## 📌 Project Goal (MVP)
-
-Build a location-based web platform that:
-
-- Collects audience ratings via QR link
-- Aggregates scores for venues and artists
-- Displays public leaderboards by town
-- Provides basic dashboard for venues/artists
-
-This is a **functional MVP**, not final production logic.
+A location-based web platform where audiences rate live music performances, venues, and cities. Scores aggregate into public leaderboards, and each artist/venue has a public profile page.
 
 ---
 
-# 1️⃣ Core Architecture
+## Stack
 
-## Backend
-
-- [x] Choose stack (Next.js API / Postgres)
-- [x] Database setup (Postgres-backed server data layer)
-- [x] Environment config (`DATABASE_URL`, `ENLIVE_SESSION_SECRET`)
-- [ ] Basic error handling (partial: standardized route wrapper + request IDs, no global error policy)
-- [x] Logging enabled (basic JSON logs + request IDs across API routes)
-
-## Frontend
-
-- [x] Public leaderboard page
-- [x] Rating submission form
-- [x] Venue/Artist login
-- [x] Basic dashboard
-- [x] Admin panel (simple)
+- **Framework**: Next.js 14 (App Router)
+- **Database**: PostgreSQL (via `pg` pool)
+- **Auth**: Signed session cookies (iron-session style, ENLIVE_SESSION_SECRET)
+- **Styling**: Tailwind CSS + CSS custom properties (light/dark theme)
+- **Validation**: Zod with sanitization transforms
+- **Process manager**: PM2
+- **Web server**: nginx (reverse proxy + SSL via Certbot)
 
 ---
 
-# 2️⃣ Database Schema
+## Features
 
-## Users (Venues / Artists)
+### Public
+- [x] Public leaderboard — tabs for Artists, Venues, Cities; filterable by town
+- [x] Rating submission via `/rate/[id]` — 4 role-aware categories, 1–5 scale, overall score
+- [x] Public profile page at `/target/[id]` — hero card, stats, category bars, recent ratings, copy-link
+- [x] reCAPTCHA v3 on rating and registration forms
+- [x] Device cooldown (Postgres-backed) to prevent duplicate rapid submissions
+- [x] Light / dark theme toggle (persisted to localStorage, no flash on load)
 
-- [x] id (UUID-like string IDs currently)
-- [x] name
-- [x] email
-- [x] password (hashed)
-- [x] role (venue | artist | admin)
-- [x] location (town string)
-- [x] created_at
+### Artist / Venue Accounts
+- [x] Registration (`/users/register`) — separate flows for artists and venues
+  - Artists: name, email, password, genre (no location required)
+  - Venues: name, email, password, town/city
+- [x] Login (`/users/auth/login`) with bcrypt password verification
+- [x] Dashboard — total ratings, average score, category breakdown
+- [x] Profile editing on `/target/[id]` — name, location (venues), genre (artists), bio (500 chars)
+  - Bio stored in `settings_json` column — no schema migration required
+- [x] Header account dropdown with profile link and logout
 
-## Ratings
-
-- [x] id
-- [x] target_id (venue/artist id)
-- [x] target_type (venue | artist)
-- [x] category_1_score
-- [x] category_2_score
-- [x] category_3_score
-- [x] category_4_score (optional)
-- [x] overall_score
-- [x] created_at
-- [x] location
-
-## Leaderboard (optional cache table)
-
-- [ ] id
-- [ ] target_id
-- [ ] average_score
-- [ ] rating_count
-- [ ] location
-- [ ] updated_at
-
----
-
-# 3️⃣ Public Leaderboard (Page 1)
-
-## Structure
-
-- [x] Two tabs:
-- [x] Venues
-- [x] Artists/Bands
-- [x] Sorted by average_score DESC
-- [x] Display:
-- [x] Name
-- [x] Location
-- [x] Overall score
-- [x] Number of ratings
-
-## Filtering
-
-- [x] Filter by town (multi-town supported)
-- [ ] Default location auto-set (currently defaults to `All`)
-
----
-
-# 4️⃣ Rating Submission Flow (QR Simulation)
-
-## Access
-
-- [x] Public route: /rate/:id
-- [x] Target type detected (venue or artist)
-
-## Form
-
-- [x] Category 1 (e.g. Sound)
-- [x] Category 2 (e.g. Atmosphere)
-- [x] Category 3 (e.g. Stage Presence)
-- [x] Category 4 (e.g. Value)
-- [x] Scale: 1–5
-
-## On Submit
-
-- [x] Store rating
-- [x] Recalculate average (simple mean for MVP)
-- [x] Redirect to leaderboard or thank-you page (redirects to leaderboard)
-
-⚠ MVP uses simple average (no advanced weighting yet)
-
----
-
-# 5️⃣ Venue / Artist Dashboard
-
-## Auth
-
-- [x] Login (email + password)
-- [x] Password hashing (bcryptjs)
-- [x] JWT/session auth (signed session cookie)
-
-## Dashboard View
-
-- [x] Show:
-  - [x] Total ratings
-  - [x] Current average score
-  - [x] Category breakdown averages
-- [x] Basic stats only (no advanced analytics yet)
-
----
-
-# 6️⃣ Admin Panel (Simple)
-
-- [x] Add new venue
-- [x] Add new artist
-- [x] Assign location
-- [x] Delete test data
+### Admin Panel
+- [x] Admin login (`/admin/auth/login`)
+- [x] User management — list, add, delete users
+- [x] Add users with role-specific settings (venue capacity/booking/wheelchair, artist genre/showcase/social)
 - [x] View all ratings
-
-Can be protected route or hardcoded admin login.
-
----
-
-# 7️⃣ Scoring Logic (MVP Version)
-
-For MVP:
-
-- [x] Average = sum(category scores) / number of categories
-- [x] Overall = mean of all submitted ratings
-- [x] Minimum rating threshold before display (optional, e.g. 3 ratings)
-
-⚠ Advanced logic (outlier detection, weighting, anti-fraud) is NOT part of MVP.
+- [x] Database reset (clears all data)
 
 ---
 
-# 8️⃣ Security (Basic MVP Standard)
+## Database Schema
 
-- [x] Input validation (Zod on key mutation/auth endpoints + route param/query validation where applicable)
-- [x] Rate limit rating endpoint (Postgres-backed per IP/device)
-- [x] Prevent duplicate rapid submissions (server-side device cooldown)
-- [x] Sanitize inputs (basic string sanitization + normalization on key mutation/auth endpoints)
-- [x] No plaintext passwords (server seed/users hashed)
+### users
+| Column | Type | Notes |
+|---|---|---|
+| id | TEXT | Format: `A000001` (artist), `V000001` (venue), `C000001` (city) |
+| enlive_uid | TEXT | Human-readable EnLive UID |
+| name | TEXT | |
+| email | TEXT | Unique |
+| password_hash | TEXT | bcrypt |
+| role | TEXT | `artist` \| `venue` \| `city` \| `admin` |
+| location | TEXT | Town/city (optional for artists) |
+| genre | TEXT | Artist genre |
+| settings_json | TEXT | JSON blob — bio, bookingOpen, capacity, wheelchairAccess, etc. |
+| created_at | TIMESTAMPTZ | |
 
----
+### ratings
+| Column | Type |
+|---|---|
+| id | TEXT |
+| target_id | TEXT |
+| target_type | TEXT |
+| category_1–4_score | INTEGER (1–5) |
+| overall_score | NUMERIC |
+| location | TEXT |
+| device_id | TEXT |
+| created_at | TIMESTAMPTZ |
 
-# 9️⃣ Deployment
-
-- [x] Production environment config ([.env.example](file:///.env.example) created)
-- [ ] Hosting setup (Recommended: Vercel for Frontend, Railway/Neon for Postgres)
-- [ ] Domain connected
-- [ ] SSL enabled
-- [ ] Database backups configured
-
-### 🚀 Production Setup Guide
-
-1.  **Database**:
-    *   Provision a managed Postgres instance (e.g., [Railway](https://railway.app) or [Neon](https://neon.tech)).
-    *   Ensure `PGSSLMODE=require` is set in your environment if the provider requires SSL.
-    *   Apply migrations: `DATABASE_URL=your_prod_url npm run db:migrate`.
-
-2.  **Application Hosting (Vercel)**:
-    *   Connect your repository to Vercel.
-    *   Add environment variables: `DATABASE_URL`, `ENLIVE_SESSION_SECRET`.
-    *   The build command should be `npm run build`.
-
-3.  **Security & Maintenance**:
-    *   **SSL**: Automatically handled by Vercel for the frontend. Managed DB providers usually provide SSL certificates for the connection.
-    *   **Backups**: Enable daily automated backups on your DB provider (Railway/Neon have this built-in).
-    *   **Session Secret**: Use a 32+ character random string for `ENLIVE_SESSION_SECRET` in production.
+### rate_limits
+Postgres-backed per-device cooldown table.
 
 ---
 
-# 🔟 Explicitly NOT in MVP
+## Category Labels (role-aware)
 
-- [ ] Subscription payments
-- [ ] SquareUP integration
-- [ ] QR code auto-generation system
-- [ ] Ticketing
-- [ ] Fraud detection engine
-- [ ] Complex weighting algorithms
-- [ ] National/global rankings
-- [ ] Polished UI/branding
+| Role | Cat 1 | Cat 2 | Cat 3 | Cat 4 |
+|---|---|---|---|---|
+| Artist | Performance | Stage Presence | Setlist | Crowd Engagement |
+| Venue | Atmosphere | Sound Quality | Staff | Value |
+| City | Live Music Culture | Venue Density | Artist Support | Audience Turnout |
 
 ---
 
-# 🚀 MVP Success Criteria
+## Security
 
-MVP is considered successful when:
-
-- [x] Users can submit ratings without friction
-- [x] Leaderboard updates correctly
-- [x] Venues/artists can log in and see stats
-- [ ] No major crashes under light load (load-test script added, results not yet recorded)
-- [ ] Real-world users interact with it
+- [x] Zod validation + input sanitization on all mutation/auth endpoints
+- [x] bcrypt password hashing
+- [x] Signed session cookies
+- [x] reCAPTCHA v3 on registration and rating
+- [x] Postgres-backed rate limiting (shared across instances)
+- [x] Request IDs on all API routes for log correlation
+- [x] No seed/mock data in production — database starts empty
 
 ---
 
-# 📈 Next Phase (Post-MVP)
+## Deployment (VPS — Ubuntu 22.04/24.04)
 
-- Advanced scoring logic
-- Outlier dampening
-- Anti-manipulation layer
-- Subscription model
-- Analytics upgrades
-- Multi-location scaling
+### First-time install
+```bash
+sudo bash install.sh
+```
+Installs Node.js, PostgreSQL, PM2, nginx, configures `.env.local`, runs migrations, builds, and optionally sets up SSL via Certbot.
+
+### Update to latest
+```bash
+sudo bash update.sh
+```
+Creates a temporary 2 GB swap, pulls `origin/main`, runs `npm ci` + `npm run build`, reloads PM2, then removes the swap automatically.
+
+### Environment variables (`.env.local`)
+```
+DATABASE_URL=postgresql://user:pass@localhost:5432/enlive
+NEXT_PUBLIC_APP_URL=https://enlive.app
+ENLIVE_SESSION_SECRET=<32+ char random string>
+RECAPTCHA_SITE_KEY=
+RECAPTCHA_SECRET_KEY=
+NODE_ENV=production
+PORT=3001
+```
+
+### Manual commands
+```bash
+npm run db:migrate     # Apply schema migrations
+npm run db:seed        # Seed demo data (only if DB is empty)
+npm run db:setup       # migrate + seed
+npm run dev            # Local dev server
+npm run build          # Production build
+pm2 logs enlive        # App logs
+pm2 status             # Process status
+```
+
+---
+
+## Local Development
+
+```bash
+cp .env.example .env.local
+# Fill in DATABASE_URL and ENLIVE_SESSION_SECRET
+npm install
+npm run db:setup
+npm run dev
+```
+
+---
+
+## Notes
+
+- `.app` TLD is HSTS preloaded — HTTPS is required in all browsers. SSL must be configured via Certbot before the site is accessible.
+- `settings_json` is a freeform JSON column used to store profile-specific settings without schema migrations. Bio is read/written by merging into the existing blob.
+- Rating endpoint rate limiting is Postgres-backed and shared across all app instances using the same database.
+
+---
+
+## Not in scope (post-MVP)
+
+- Subscription / payments
+- QR code auto-generation
 - Ticketing integration
-
----
-
-## Local Postgres Setup (Current App)
-
-- Set `DATABASE_URL` in `.env`
-- Set `ENLIVE_SESSION_SECRET` in `.env`
-- Optional: set `PGSSLMODE=require` for hosted Postgres providers
-- Run `npm run db:migrate` to apply migrations (includes rate-limit table)
-- Run `npm run db:seed` to seed demo data (only seeds if DB is empty)
-- Or run `npm run db:setup` to do both
-- Then run `npm run dev`
-- Optional light-load test (with app running): `npm run load:test`
-- Optional write-path test: `npm run load:test -- --include-writes`
-
-## Notes / Current Limits
-
-- Postgres schema must be created via `npm run db:migrate` before app/API usage (runtime now fails fast if schema is missing)
-- Rating endpoint rate limiting is Postgres-backed (shared across app instances using the same DB)
-- API logging is basic JSON console logging with request IDs across routes (no external log sink yet)
-- Lightweight SQL migration runner is installed (`db/migrations` + `npm run db:migrate`), but not a full migration framework yet
-- Load testing is scripted via `autocannon`, but no benchmark thresholds/results are documented yet
+- Fraud detection / outlier dampening
+- National / global rankings
+- Advanced weighting algorithms
