@@ -37,8 +37,8 @@ DB_USER="${DB_USER:-enlive}"
 read -rsp "PostgreSQL password: " DB_PASS; echo ""
 [ -z "$DB_PASS" ] && die "Database password cannot be empty."
 
-read -rp "App port [3000]: " APP_PORT
-APP_PORT="${APP_PORT:-3000}"
+read -rp "App port [3001]: " APP_PORT
+APP_PORT="${APP_PORT:-3001}"
 
 read -rp "Node.js version [22]: " NODE_VERSION
 NODE_VERSION="${NODE_VERSION:-22}"

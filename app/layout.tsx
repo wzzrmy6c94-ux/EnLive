@@ -16,6 +16,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Enlive",
   description: "Location-based live music rating and leaderboard",
+  icons: {
+    icon: [
+      { url: "/assets/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/assets/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/assets/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/assets/favicon-64x64.png", sizes: "64x64", type: "image/png" },
+      { url: "/assets/favicon-128x128.png", sizes: "128x128", type: "image/png" },
+      { url: "/assets/favicon-256x256.png", sizes: "256x256", type: "image/png" },
+    ],
+    shortcut: "/assets/favicon.ico",
+  },
 };
 
 export default function RootLayout({
