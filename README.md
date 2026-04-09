@@ -160,9 +160,10 @@ npm run dev
 
 ## Not in scope (post-MVP)
 
-- Subscription / payments
+- Implemented subscription / payments (Square)
 - QR code auto-generation
 - Ticketing integration
 - Fraud detection / outlier dampening
 - National / global rankings
 - Advanced weighting algorithms
+- Future: subscription analytics, tier upgrades, cancellation UI
