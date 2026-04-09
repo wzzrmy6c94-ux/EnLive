@@ -82,6 +82,8 @@ All monetary values are stored in **cents** to avoid floating‑point issues. Di
 - **E2E tests** using Playwright: sign‑up as artist/venue, subscribe monthly, upgrade to yearly, cancel.
 
 ## Open Questions / Decisions
+
+<!-- version 1 -->
 - Do we need support for **prorated upgrades** (changing plan mid‑cycle)?
 - Should we expose a **self‑service portal** for plan changes beyond admin UI?
 - Will we ever support **additional payment providers**? (Wrapper makes it easier.)
