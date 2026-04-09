@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Panel } from "@/components/enlive-shell";
+import { PlanManager } from '@/components/PlanManager';
+
 
 type TargetType = "venue" | "artist";
 
@@ -113,7 +114,10 @@ export default function AdminDashboardPage() {
           </Panel>
 
           <Panel>
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Recent ratings (all)</h2>
+            <h2 className="text-base font-semibold text-[var(--foreground)]">Subscription Plans</h2>
+            <PlanManager />
+          </Panel>
+
             <div className="mt-3 space-y-2">
               {ratings.length ? ratings.map((rating) => (
                 <div key={rating.id} className="rounded-xl border p-3 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
