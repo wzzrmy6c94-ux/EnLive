@@ -1,4 +1,6 @@
 CREATE TABLE IF NOT EXISTS users (
+  square_customer_id TEXT,
+  square_subscription_id TEXT,
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
@@ -24,4 +26,12 @@ CREATE TABLE IF NOT EXISTS ratings (
 
 CREATE INDEX IF NOT EXISTS idx_users_role_location ON users(role, location);
 CREATE INDEX IF NOT EXISTS idx_ratings_target_created ON ratings(target_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_ratings_device_target_created ON ratings(device_id, target_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS subscription_plans (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('artist','venue')),
+  price_monthly_cents INTEGER NOT NULL,
+  discount_percent INTEGER NOT NULL DEFAULT 0
+);
+
