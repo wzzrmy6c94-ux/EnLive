@@ -10,7 +10,7 @@ const GENRES = [
   "Psych Rock", "R&B", "Soul", "Surf Rock", "Synthpop", "Other",
 ];
 
-type User = { id: string; name: string; email: string; role: string; location: string; genre?: string };
+type User = { id: string; name: string; email: string; role: string; location: string; genre?: string; square_subscription_id?: string };
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -146,7 +146,9 @@ export default function ProfilePage() {
                 {user.name}
               </h1>
               <p className="text-sm font-medium" style={{ color: "var(--primary)" }}>
-                {roleLabel}{user.genre ? ` · ${user.genre}` : ""}
+                {user.square_subscription_id ? (
+                  <p className="text-sm" style={{ color: "var(--primary)" }}>Subscription active</p>
+                ) : null}
               </p>
               <div className="flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
                 <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-current shrink-0" aria-hidden="true">
