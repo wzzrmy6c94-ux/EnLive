@@ -35,3 +35,12 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
   discount_percent INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS qr_codes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  target_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used BOOLEAN NOT NULL DEFAULT false
+);
+
+
