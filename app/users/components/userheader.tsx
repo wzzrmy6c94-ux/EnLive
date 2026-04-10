@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "@/components/nav-link";
-import EnliveLogoRed from "@/app/assets/enlive-logo-red.png";
+import EnliveLogoRed from "@/app/assets/enlive-logo-dark.png";
 
 export function UserHeader({
   title,

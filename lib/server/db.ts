@@ -164,6 +164,8 @@ async function ensureInitialized() {
       } catch {
         // Ignore rollback failure if no transaction is active.
       }
+      // Clear cached promise so the next call can retry
+      initPromise = null;
       throw error;
     } finally {
       client.release();
