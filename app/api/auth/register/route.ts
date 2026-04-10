@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
     }
 
     const recaptchaAction = role === "venue" ? "register_venue" : "register_artist";
-    const recaptchaOk = await verifyRecaptcha(recaptchaToken, recaptchaAction).catch(() => false);
+    const skipRecaptcha = process.env.NODE_ENV === "development";
+    const recaptchaOk = skipRecaptcha || await verifyRecaptcha(recaptchaToken, recaptchaAction).catch(() => false);
     if (!recaptchaOk) {
       logWarn("auth.register.recaptcha_failed", { requestId, role });
       return withRequestId(
