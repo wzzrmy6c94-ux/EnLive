@@ -34,6 +34,8 @@ A location-based web platform where audiences rate live music performances, venu
 - [x] Dashboard — total ratings, average score, category breakdown
 - [x] Profile editing on `/target/[id]` — name, location (venues), genre (artists), bio (500 chars)
   - Bio stored in `settings_json` column — no schema migration required
+- Profile pages now display subscription status when active.
+
 - [x] Header account dropdown with profile link and logout
 
 ### Admin Panel
