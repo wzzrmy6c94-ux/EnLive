@@ -15,6 +15,8 @@ type UserRow = {
   genre?: string;
   country?: string;
   settings_json?: string | null;
+  square_subscription_id?: string | null;
+  square_customer_id?: string | null;
   created_at: string;
 };
 
@@ -171,7 +173,7 @@ async function ensureInitialized() {
   return initPromise;
 }
 
-async function withDb<T>(fn: (client: PoolClient) => Promise<T>) {
+export async function withDb<T>(fn: (client: PoolClient) => Promise<T>) {
   await ensureInitialized();
   const client = await getPool().connect();
   try {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { withDb } from '@/lib/server/db';
 import crypto from 'crypto';
 
 export async function POST(req: Request) {
@@ -11,7 +11,12 @@ export async function POST(req: Request) {
   const event = JSON.parse(body);
   if (event.type === 'subscription.created' || event.type === 'subscription.updated') {
     const sub = event.data.object.subscription;
-    await prisma.users.updateMany({ where: { square_subscription_id: sub.id }, data: { square_customer_id: sub.customerId } });
+    await withDb(async (db) => {
+      await db.query(
+        `UPDATE users SET square_customer_id = $1 WHERE square_subscription_id = $2`,
+        [sub.customerId, sub.id],
+      );
+    });
   }
   // TODO: handle payment.failed, subscription.canceled
   return NextResponse.json({ success: true });

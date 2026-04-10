@@ -25,7 +25,8 @@ export const QrCodeGenerator: React.FC<{ targetId: string }> = ({ targetId }) =>
           imageOptions: { hideBackgroundDots: true, imageSize: 0.4 },
         });
         const blob = await qr.getRawData('svg');
-        const url = URL.createObjectURL(blob);
+        if (!blob) throw new Error('Failed to generate QR code data');
+        const url = URL.createObjectURL(blob as Blob);
         setSvgUrl(url);
         setLoading(false);
       } catch (e) {

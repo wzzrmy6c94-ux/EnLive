@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Panel } from "@/components/enlive-shell";
 import { PlanManager } from '@/components/PlanManager';
 
 
@@ -118,6 +119,8 @@ export default function AdminDashboardPage() {
             <PlanManager />
           </Panel>
 
+          <Panel>
+            <h2 className="text-base font-semibold text-[var(--foreground)]">Recent Ratings</h2>
             <div className="mt-3 space-y-2">
               {ratings.length ? ratings.map((rating) => (
                 <div key={rating.id} className="rounded-xl border p-3 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>

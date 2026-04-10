@@ -1,9 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { verifyQrToken } from '@/lib/qrToken';
-import { withDb } from '@/lib/server/db';
 import { EnliveShell, Panel } from "@/components/enlive-shell";
 import { CATEGORY_LABELS, SCORE_SCALE } from "@/lib/enlive-store";
 
@@ -21,6 +20,7 @@ export default function RatePage() {
   const qrToken = searchParams?.get('qrToken');
   const [qrError, setQrError] = useState<string | null>(null);
 
+  const [target, setTarget] = useState<Target | null>(null);
   const [loading, setLoading] = useState(true);
   const [values, setValues] = useState<{ c1: number; c2: number; c3: number; c4: string }>({ c1: 4, c2: 4, c3: 4, c4: "" });
   const [message, setMessage] = useState<string | null>(null);
@@ -28,43 +28,49 @@ export default function RatePage() {
 
   useEffect(() => {
     let cancelled = false;
-    // If QR token provided, validate it first
-    if (qrToken) {
-      try {
-        const payload = verifyQrToken(qrToken);
-        // Check DB row
-        const row = await withDb(async (db) => {
-          const res = await db.query('SELECT used, expires_at FROM qr_codes WHERE token = $1', [qrToken]);
-          return res.rows[0];
-        });
-        if (!row) throw new Error('QR token not found');
-        if (row.used) throw new Error('QR code already used');
-        if (new Date() > row.expires_at) throw new Error('QR code expired');
-        // Token is valid – we could pre‑select target based on payload.targetId if desired
-      } catch (e) {
-        setQrError(e instanceof Error ? e.message : 'Invalid QR token');
-        setLoading(false);
-        return; // abort further loading
-      }
-    }
 
-      .then(async (res) => {
+    async function init() {
+      // If QR token provided, validate it via API
+      if (qrToken) {
+        try {
+          const res = await fetch('/api/qr/use', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: qrToken, validate: true }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Invalid QR token');
+          }
+        } catch (e) {
+          if (!cancelled) {
+            setQrError(e instanceof Error ? e.message : 'Invalid QR token');
+            setLoading(false);
+          }
+          return;
+        }
+      }
+
+      // Load target
+      try {
+        const res = await fetch(`/api/targets/${params.id}`);
         const data = (await res.json()) as { target?: Target; error?: string };
         if (!res.ok || !data.target) throw new Error(data.error || "Target not found.");
         if (!cancelled) setTarget(data.target);
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Target not found.");
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+
+    init();
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [params.id, qrToken]);
 
-    if (qrError) {
+  if (qrError) {
     return (
       <EnliveShell title="Invalid QR" subtitle="" headerMode="public">
         <Panel className="shadow-[0_18px_60px_var(--shadow)]">
@@ -75,6 +81,7 @@ export default function RatePage() {
     );
   }
 
+  if (loading) {
     return (
       <EnliveShell title="Rating Link" subtitle="Public QR submission form" headerMode="public">
         <Panel><p className="text-sm text-[var(--text-muted)]">Loading target…</p></Panel>
@@ -103,7 +110,7 @@ export default function RatePage() {
         <Panel>
           <form
             className="space-y-4"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               setError(null);
               setMessage(null);
@@ -114,24 +121,27 @@ export default function RatePage() {
                 category3: values.c3,
                 category4: values.c4 === "" ? undefined : Number(values.c4),
               };
-                                const res = await fetch('/api/ratings', {
+              try {
+                const res = await fetch('/api/ratings', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(body),
+                });
+                const data = (await res.json()) as { error?: string; rating?: { overallScore: number } };
+                if (!res.ok || !data.rating) throw new Error(data.error || 'Failed to submit rating.');
+                setMessage(`Thanks. Your rating was recorded with overall score ${data.rating.overallScore.toFixed(2)}/100.`);
+                // Mark QR used if token present
+                if (qrToken) {
+                  await fetch('/api/qr/use', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
+                    body: JSON.stringify({ token: qrToken }),
                   });
-                  const data = (await res.json()) as { error?: string; rating?: { overallScore: number } };
-                  if (!res.ok || !data.rating) throw new Error(data.error || 'Failed to submit rating.');
-                  setMessage(`Thanks. Your rating was recorded with overall score ${data.rating.overallScore.toFixed(2)}/100.`);
-                  // Mark QR used if token present
-                  if (qrToken) {
-                    await fetch('/api/qr/use', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ token: qrToken }),
-                    });
-                  }
-                  window.setTimeout(() => router.push('/'), 900);
-
+                }
+                window.setTimeout(() => router.push('/'), 900);
+              } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : 'Failed to submit rating.');
+              }
             }}
           >
             {[1, 2, 3, 4].map((idx) => (
