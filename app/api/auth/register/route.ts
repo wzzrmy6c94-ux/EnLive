@@ -73,8 +73,10 @@ export async function POST(request: NextRequest) {
     }
 
     const recaptchaAction = role === "venue" ? "register_venue" : "register_artist";
-    const skipRecaptcha = process.env.NODE_ENV === "development";
-    const recaptchaOk = skipRecaptcha || await verifyRecaptcha(recaptchaToken, recaptchaAction).catch(() => false);
+    // Recaptcha can be skipped in development or when the DISABLE_RECAPTCHA env var is set to "true".
+    const skipRecaptcha =
+      process.env.NODE_ENV === "development" || process.env.DISABLE_RECAPTCHA === "true";
+    const recaptchaOk = skipRecaptcha || (await verifyRecaptcha(recaptchaToken, recaptchaAction).catch(() => false));
     if (!recaptchaOk) {
       logWarn("auth.register.recaptcha_failed", { requestId, role });
       return withRequestId(
