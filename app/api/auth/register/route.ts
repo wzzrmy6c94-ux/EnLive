@@ -18,7 +18,8 @@ const registerSchema = z.object({
     .pipe(z.string().max(120))
     .optional(),
   genre: z.string().transform(sanitizeText).pipe(z.string().max(80)).optional(),
-  recaptchaToken: z.string().min(1),
+  // recaptchaToken is required in production, but optional when recaptcha is disabled.
+  recaptchaToken: z.string().min(1).optional(),
 });
 
 async function verifyRecaptcha(token: string, action: string) {
@@ -76,7 +77,12 @@ export async function POST(request: NextRequest) {
     // Recaptcha can be skipped in development or when the DISABLE_RECAPTCHA env var is set to "true".
     const skipRecaptcha =
       process.env.NODE_ENV === "development" || !!process.env.DISABLE_RECAPTCHA;
-    const recaptchaOk = skipRecaptcha || (await verifyRecaptcha(recaptchaToken, recaptchaAction).catch(() => false));
+    // If recaptcha is required but the token is missing, treat as failure.
+    const recaptchaOk = skipRecaptcha
+      ? true
+      : recaptchaToken
+      ? await verifyRecaptcha(recaptchaToken, recaptchaAction).catch(() => false)
+      : false;
     if (!recaptchaOk) {
       logWarn("auth.register.recaptcha_failed", { requestId, role });
       return withRequestId(
