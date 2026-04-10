@@ -5,28 +5,39 @@ import QRCodeStyling from 'qr-code-styling';
 export const QrCodeGenerator: React.FC<{ targetId: string }> = ({ targetId }) => {
   const [pngUrl, setPngUrl] = useState<string>('');
   const [svgUrl, setSvgUrl] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchQr() {
-      const res = await axios.post('/api/qr/generate', { targetId });
-      const { imageUrl, token } = res.data;
-      setPngUrl(imageUrl);
-      // Generate SVG with logo overlay
-      const qr = new QRCodeStyling({
-        width: 256,
-        height: 256,
-        data: token,
-        image: '/logo.svg', // path to Enlive logo in public folder
-        dotsOptions: { color: '#000000', type: 'rounded' },
-        backgroundOptions: { color: '#FFFFFF' },
-        imageOptions: { hideBackgroundDots: true, imageSize: 0.4 },
-      });
-      const blob = await qr.getRawData('svg');
-      const url = URL.createObjectURL(blob);
-      setSvgUrl(url);
+      try {
+        const res = await axios.post('/api/qr/generate', { targetId });
+        const { imageUrl, token } = res.data;
+        setPngUrl(imageUrl);
+        // Generate SVG with logo overlay
+        const qr = new QRCodeStyling({
+          width: 256,
+          height: 256,
+          data: token,
+          image: '/logo.svg',
+          dotsOptions: { color: '#000000', type: 'rounded' },
+          backgroundOptions: { color: '#FFFFFF' },
+          imageOptions: { hideBackgroundDots: true, imageSize: 0.4 },
+        });
+        const blob = await qr.getRawData('svg');
+        const url = URL.createObjectURL(blob);
+        setSvgUrl(url);
+        setLoading(false);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to generate QR code');
+        setLoading(false);
+      }
     }
     fetchQr();
   }, [targetId]);
+
+  if (loading) return <p>Generating QR code…</p>;
+  if (error) return <p className="text-sm text-[var(--primary)]">{error}</p>;
 
   return (
     <div>
