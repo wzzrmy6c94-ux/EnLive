@@ -123,6 +123,9 @@ export default function RegisterForm({
 }: {
   recaptchaSiteKey: string;
 }) {
+  if (!recaptchaSiteKey) {
+    return <RegisterFormInner />;
+  }
   return (
     <GoogleReCaptchaProvider reCaptchaKey={recaptchaSiteKey}>
       <RegisterFormInner />
@@ -181,16 +184,14 @@ function RegisterFormInner() {
               setError("Please accept the terms of service.");
               return;
             }
-            if (!executeRecaptcha) {
-              setError("Verification is not ready yet. Please try again.");
-              return;
-            }
             setError(null);
             setSubmitting(true);
             try {
-              const recaptchaToken = await executeRecaptcha(
-                role === "venue" ? "register_venue" : "register_artist",
-              );
+              const recaptchaToken = executeRecaptcha
+                ? await executeRecaptcha(
+                    role === "venue" ? "register_venue" : "register_artist",
+                  )
+                : "dev-bypass";
               const res = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
