@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { verifyQrToken } from '@/lib/qrToken';
+import { withDb } from '@/lib/server/db';
 import { EnliveShell, Panel } from "@/components/enlive-shell";
 import { CATEGORY_LABELS, SCORE_SCALE } from "@/lib/enlive-store";
 
@@ -16,7 +17,10 @@ type Target = {
 export default function RatePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const [target, setTarget] = useState<Target | null>(null);
+  const searchParams = useSearchParams();
+  const qrToken = searchParams?.get('qrToken');
+  const [qrError, setQrError] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [values, setValues] = useState<{ c1: number; c2: number; c3: number; c4: string }>({ c1: 4, c2: 4, c3: 4, c4: "" });
   const [message, setMessage] = useState<string | null>(null);
@@ -24,8 +28,26 @@ export default function RatePage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    fetch(`/api/targets/${params.id}`, { cache: "no-store" })
+    // If QR token provided, validate it first
+    if (qrToken) {
+      try {
+        const payload = verifyQrToken(qrToken);
+        // Check DB row
+        const row = await withDb(async (db) => {
+          const res = await db.query('SELECT used, expires_at FROM qr_codes WHERE token = $1', [qrToken]);
+          return res.rows[0];
+        });
+        if (!row) throw new Error('QR token not found');
+        if (row.used) throw new Error('QR code already used');
+        if (new Date() > row.expires_at) throw new Error('QR code expired');
+        // Token is valid – we could pre‑select target based on payload.targetId if desired
+      } catch (e) {
+        setQrError(e instanceof Error ? e.message : 'Invalid QR token');
+        setLoading(false);
+        return; // abort further loading
+      }
+    }
+
       .then(async (res) => {
         const data = (await res.json()) as { target?: Target; error?: string };
         if (!res.ok || !data.target) throw new Error(data.error || "Target not found.");
@@ -42,7 +64,17 @@ export default function RatePage() {
     };
   }, [params.id]);
 
-  if (loading) {
+    if (qrError) {
+    return (
+      <EnliveShell title="Invalid QR" subtitle="" headerMode="public">
+        <Panel className="shadow-[0_18px_60px_var(--shadow)]">
+          <p className="text-sm text-[var(--primary)]">{qrError}</p>
+          <Link href="/" className="mt-3 inline-flex text-sm text-[var(--primary)] hover:opacity-80">Back to home</Link>
+        </Panel>
+      </EnliveShell>
+    );
+  }
+
     return (
       <EnliveShell title="Rating Link" subtitle="Public QR submission form" headerMode="public">
         <Panel><p className="text-sm text-[var(--text-muted)]">Loading target…</p></Panel>
@@ -82,20 +114,24 @@ export default function RatePage() {
                 category3: values.c3,
                 category4: values.c4 === "" ? undefined : Number(values.c4),
               };
-              void fetch("/api/ratings", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-              })
-                .then(async (res) => {
+                                const res = await fetch('/api/ratings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                  });
                   const data = (await res.json()) as { error?: string; rating?: { overallScore: number } };
-                  if (!res.ok || !data.rating) throw new Error(data.error || "Failed to submit rating.");
+                  if (!res.ok || !data.rating) throw new Error(data.error || 'Failed to submit rating.');
                   setMessage(`Thanks. Your rating was recorded with overall score ${data.rating.overallScore.toFixed(2)}/100.`);
-                  window.setTimeout(() => router.push("/"), 900);
-                })
-                .catch((err: unknown) => {
-                  setError(err instanceof Error ? err.message : "Failed to submit rating.");
-                });
+                  // Mark QR used if token present
+                  if (qrToken) {
+                    await fetch('/api/qr/use', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ token: qrToken }),
+                    });
+                  }
+                  window.setTimeout(() => router.push('/'), 900);
+
             }}
           >
             {[1, 2, 3, 4].map((idx) => (
