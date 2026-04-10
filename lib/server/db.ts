@@ -358,6 +358,7 @@ export async function authenticateUser(email: string, password: string) {
       role: user.role,
       location: user.location,
       createdAt: new Date(user.created_at).toISOString(),
+      square_subscription_id: user.square_subscription_id ?? null,
     };
   });
 }
@@ -365,7 +366,7 @@ export async function authenticateUser(email: string, password: string) {
 export async function getUserById(id: string) {
   return withDb(async (db) => {
     const res = await db.query<Omit<UserRow, "password_hash">>(
-      `SELECT id, enlive_uid, name, email, role, location, created_at FROM users WHERE id = $1 LIMIT 1`,
+      `SELECT id, enlive_uid, name, email, role, location, created_at, square_subscription_id FROM users WHERE id = $1 LIMIT 1`,
       [id],
     );
     const user = res.rows[0];
@@ -377,6 +378,7 @@ export async function getUserById(id: string) {
       role: user.role,
       location: user.location,
       createdAt: new Date(user.created_at).toISOString(),
+      square_subscription_id: user.square_subscription_id ?? null,
     };
   });
 }
