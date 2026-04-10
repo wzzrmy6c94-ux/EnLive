@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const recaptchaAction = role === "venue" ? "register_venue" : "register_artist";
     // Recaptcha can be skipped in development or when the DISABLE_RECAPTCHA env var is set to "true".
     const skipRecaptcha =
-      process.env.NODE_ENV === "development" || process.env.DISABLE_RECAPTCHA === "true";
+      process.env.NODE_ENV === "development" || !!process.env.DISABLE_RECAPTCHA;
     const recaptchaOk = skipRecaptcha || (await verifyRecaptcha(recaptchaToken, recaptchaAction).catch(() => false));
     if (!recaptchaOk) {
       logWarn("auth.register.recaptcha_failed", { requestId, role });
