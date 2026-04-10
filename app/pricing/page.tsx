@@ -1,3 +1,4 @@
+'use client';
 import React from 'react';
 import { PlanSelector } from '@/components/PlanSelector';
 import { useRouter } from 'next/navigation';
