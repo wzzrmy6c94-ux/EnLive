@@ -5,6 +5,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EnliveShell, Panel } from "@/components/enlive-shell";
 
+type RatingInfo = {
+  id: string;
+  overallScore: number;
+  category1: number;
+  category2: number;
+  category3: number;
+  category4: number | null;
+  createdAt: string;
+};
+
 type UserData = {
   user: { id: string; name: string; email: string; role: string; location: string };
   target: {
@@ -16,6 +26,7 @@ type UserData = {
       category3Average: number;
       category4Average: number | null;
     };
+    recentRatings?: RatingInfo[];
   } | null;
 };
 
@@ -101,22 +112,51 @@ export default function UserDashboard() {
                 ) : null)}
             </div>
           </Panel>
-        )}
+                )}
 
-        {/* Quick links */}
-        <Panel>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-            Quick Links
-          </h2>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <QuickLink href="/" label="Leaderboard" />
-            <QuickLink href={`/rate/${user.id}`} label="Your rating page" />
-          </div>
-        </Panel>
+                {/* Quick links */}
+                <Panel>
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                    Quick Links
+                  </h2>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <QuickLink href="/" label="Leaderboard" />
+                    <QuickLink href={`/rate/${user.id}`} label="Your rating page" />
+                  </div>
+                </Panel>
 
-      </main>
-    </EnliveShell>
-  );
+                {/* Recent rating scorecards */}
+                {target?.recentRatings && target.recentRatings.length > 0 && (
+                  <Panel>
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                      Recent Ratings
+                    </h2>
+                    <ul className="mt-4 space-y-3">
+                      {target.recentRatings.map((r) => (
+                        <li key={r.id} className="border rounded-xl p-3" style={{ borderColor: "var(--border)" }}>
+                          <details className="group">
+                            <summary className="flex justify-between cursor-pointer text-[var(--foreground)]">
+                              <span className="font-medium">Rating {new Date(r.createdAt).toLocaleDateString()}</span>
+                              <span className="text-sm text-[var(--text-muted)]">Overall {r.overallScore.toFixed(1)}/100</span>
+                            </summary>
+                            <div className="mt-2 space-y-1 text-[var(--foreground)]">
+                              <div>Category 1: {r.category1}/5</div>
+                              <div>Category 2: {r.category2}/5</div>
+                              <div>Category 3: {r.category3}/5</div>
+                              {r.category4 !== null && r.category4 !== undefined && (
+                                <div>Category 4: {r.category4}/5</div>
+                              )}
+                            </div>
+                          </details>
+                        </li>
+                      ))}
+                    </ul>
+                  </Panel>
+                )}
+
+              </main>
+            </EnliveShell>
+          );
 }
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {

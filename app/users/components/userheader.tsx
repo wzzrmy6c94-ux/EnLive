@@ -71,11 +71,11 @@ export function UserHeader({
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         {!hideHeroHeader ? (
           <div>
-            <Image src={EnliveLogoRed} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain" />
+            <Image src={EnliveLogoRed} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain" loading="eager" style={{ width: 'auto', height: 'auto' }} />
           </div>
         ) : (
           <>
-            <Image src={EnliveLogoRed} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain" />
+            <Image src={EnliveLogoRed} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain" loading="eager" style={{ width: 'auto', height: 'auto' }} />
           </>
         )}
         <div className="flex flex-wrap items-center gap-2 text-sm">

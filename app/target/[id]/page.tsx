@@ -212,12 +212,16 @@ export default function TargetProfilePage() {
           }}
         >
           {/* Cover banner */}
-          <div
-            className="relative h-28 w-full"
-            style={{
-              background: "linear-gradient(135deg, var(--base-deep) 0%, var(--primary) 45%, var(--secondary) 75%, var(--accent) 100%)",
-            }}
-          >
+        <div
+          className="relative h-40 w-full overflow-hidden"
+          style={{
+            backgroundImage: `
+              radial-gradient(ellipse 50% 40% at 20% 30%, rgba(255,255,255,0.1) 0%, transparent 50%),
+              radial-gradient(ellipse 30% 25% at 80% 70%, rgba(255,255,255,0.05) 0%, transparent 50%),
+              linear-gradient(135deg, var(--base-deep) 0%, var(--primary) 45%, var(--secondary) 75%, var(--accent) 100%)
+            `,
+          }}
+        >
             <div
               className="absolute inset-0 opacity-20"
               style={{
@@ -231,10 +235,13 @@ export default function TargetProfilePage() {
           <div className="px-6 pb-6">
             <div className="flex items-end justify-between" style={{ marginTop: "-40px" }}>
               <div
-                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 text-2xl font-bold shadow-lg select-none"
+                className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 text-2xl font-bold shadow-2xl select-none ring-2 ring-white/20"
                 style={{
                   borderColor: "var(--surface)",
-                  background: "linear-gradient(135deg, var(--primary), var(--secondary))",
+                  background: `
+                    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                    linear-gradient(135deg, var(--primary), var(--secondary))
+                  `,
                   color: "var(--button-text)",
                 }}
               >
@@ -269,7 +276,7 @@ export default function TargetProfilePage() {
             {/* Identity */}
             <div className="mt-3 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>
+                <h1 className="text-2xl md:text-3xl font-black bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text -webkit-background-clip-text bg-[length:200%_200%] animate-[shimmer_3s_ease-in-out_infinite] tracking-tight">
                   {target.name}
                 </h1>
                 {target.enliveUid && (
@@ -318,7 +325,7 @@ export default function TargetProfilePage() {
             ) : (
               <>
                 <div className="mt-3 flex items-baseline gap-1.5">
-                  <span className="text-4xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>
+                  <span className="text-5xl md:text-6xl font-black bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] bg-clip-text -webkit-background-clip-text bg-[length:200%_200%] animate-[shimmer_2s_ease-in-out_infinite] tracking-[-0.05em] drop-shadow-lg">
                     {target.stats.averageScore.toFixed(1)}
                   </span>
                   <span className="text-lg" style={{ color: "var(--text-muted)" }}>/100</span>

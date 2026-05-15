@@ -143,7 +143,7 @@ import { EqualizerBackground } from "@/components/equalizer-background";
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<TargetType>("venue");
   const [location, setLocation] = useState<string>("All");
-  const [minRatings, setMinRatings] = useState<number>(1);
+    // const [minRatings, setMinRatings] = useState<number>(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [locations, setLocations] = useState<string[]>(["All"]);
@@ -168,7 +168,6 @@ export default function LeaderboardPage() {
 
     const params = new URLSearchParams({
       type: activeTab,
-      minRatings: String(minRatings),
     });
     if (location !== "All") params.set("location", location);
 
@@ -199,7 +198,7 @@ export default function LeaderboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, location, minRatings, refreshKey]);
+  }, [activeTab, location, refreshKey]);
 
   const selectedRow = useMemo(
     () => rows.find((r) => r.id === selectedId) ?? rows[0] ?? null,
@@ -230,7 +229,7 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, location, minRatings, searchQuery]);
+  }, [activeTab, location, searchQuery]);
 
   // ── Fetch target details ──────────────────────────────────────────────────
   useEffect(() => {
@@ -393,20 +392,7 @@ export default function LeaderboardPage() {
                     </div>
 
                     {/* Min ratings toggle */}
-                    <label
-                      className="flex cursor-pointer items-center gap-2 text-xs select-none"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      <input
-                        type="checkbox"
-                        className="accent-[var(--primary)]"
-                        checked={minRatings === 3}
-                        onChange={(e) =>
-                          setMinRatings(e.target.checked ? 3 : 1)
-                        }
-                      />
-                      Require 3+ ratings
-                    </label>
+
                   </div>
                 </div>
               )}
@@ -455,12 +441,7 @@ export default function LeaderboardPage() {
                             >
                               {activeTab === "city" ? "Country" : "City"}
                             </th>
-                            <th
-                              className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-[0.16em]"
-                              style={{ color: "var(--text-muted)" }}
-                            >
-                              # Ratings
-                            </th>
+
                             <th
                               className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.16em]"
                               style={{ color: "var(--text-muted)" }}
@@ -610,14 +591,7 @@ export default function LeaderboardPage() {
                                   </td>
 
                                   {/* Rating count */}
-                                  <td className="px-6 py-3 text-center">
-                                    <span
-                                      className="text-sm"
-                                      style={{ color: "var(--foreground)" }}
-                                    >
-                                      {row.ratingCount}
-                                    </span>
-                                  </td>
+
 
                                   {/* Score */}
                                   <td className="px-6 py-3 text-right">
@@ -769,12 +743,7 @@ export default function LeaderboardPage() {
                               label="Ratings"
                               value={String(selectedRow.ratingCount)}
                             />
-                            <ProfileMetric
-                              label="Qualified"
-                              value={
-                                selectedRow.ratingCount >= 3 ? "Yes" : "No"
-                              }
-                            />
+
                           </div>
                         </div>
                       </div>
@@ -809,11 +778,7 @@ export default function LeaderboardPage() {
                               value={`${selectedRow.averageScore.toFixed(2)}/100`}
                               variant="primary"
                             />
-                            <StatCard
-                              label="Rating count"
-                              value={String(selectedRow.ratingCount)}
-                              variant="muted"
-                            />
+
                             <StatCard
                               label="Location"
                               value={selectedRow.location}
@@ -897,14 +862,7 @@ export default function LeaderboardPage() {
                                   : "Strong"
                               }
                             />
-                            <InsightRow
-                              label="Threshold status"
-                              value={
-                                selectedRow.ratingCount >= 3
-                                  ? "Qualified"
-                                  : "Early data"
-                              }
-                            />
+
                             <InsightRow
                               label="Town"
                               value={selectedRow.location}

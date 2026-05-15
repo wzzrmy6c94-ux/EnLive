@@ -1,0 +1,7 @@
+Okay for the QR code, I want a button on the artist/ profile to generate the code so they can download it, I want the code to take them directly to their rating form, this form will be directly attached to their profile in the database and then our algorithm can work out the score based on the ratings
+
+MUST HAVES NOW
+[ ]Accounts (usernames and slightly polished)
+[ ]Payments
+[x]QR code generation
+[x]Basic averaging algorithm
