@@ -23,7 +23,7 @@ export const GET = withApi(async (request: NextRequest, { requestId }) => {
     logWarn("leaderboard.bad_request", { requestId });
     return fail(requestId, 400, "Query param 'type' must be 'venue', 'artist', or 'city'.");
   }
-  const { type, location, minRatings = 1 } = parsed.data;
+  const { type, location, minRatings = 5 } = parsed.data;
 
   const rows = await getLeaderboard({
     targetType: type as TargetType,

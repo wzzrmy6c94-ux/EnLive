@@ -194,9 +194,11 @@ export async function listLocations() {
   });
 }
 
+const DEFAULT_LEADERBOARD_MIN_RATINGS = 5;
+
 export async function getLeaderboard(params: { targetType: TargetType; location?: string; minRatings?: number }) {
   return withDb(async (db) => {
-    const minRatings = Math.max(0, params.minRatings ?? 1);
+    const minRatings = Math.max(0, params.minRatings ?? DEFAULT_LEADERBOARD_MIN_RATINGS);
     const res = await db.query<{
       id: string;
       name: string;
@@ -204,19 +206,23 @@ export async function getLeaderboard(params: { targetType: TargetType; location?
       genre: string | null;
       country: string | null;
       role: TargetType;
+      internal_score: number | null;
       average_score: number | null;
       rating_count: string;
+      last_rating_at: string | null;
     }>(
       `SELECT
          u.id, u.name, u.location, u.genre, u.country, u.role,
+         AVG(r.overall_score)::float8 AS internal_score,
          ROUND(AVG(r.overall_score)::numeric, 2)::float8 AS average_score,
-         COUNT(r.id)::text AS rating_count
+         COUNT(r.id)::text AS rating_count,
+         MAX(r.created_at)::text AS last_rating_at
        FROM users u
        LEFT JOIN ratings r ON r.target_id = u.id AND r.target_type = u.role
        WHERE u.role = $1 AND (($2::text IS NULL OR $1::text = 'city') OR u.location = $2)
        GROUP BY u.id
        HAVING COUNT(r.id) >= $3
-       ORDER BY average_score DESC NULLS LAST, COUNT(r.id) DESC, u.name ASC`,
+       ORDER BY internal_score DESC NULLS LAST, COUNT(r.id) DESC, MAX(r.created_at) DESC NULLS LAST, u.name ASC`,
       [params.targetType, params.location ?? null, minRatings],
     );
 

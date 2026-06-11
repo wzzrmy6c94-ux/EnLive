@@ -330,9 +330,6 @@ export default function TargetProfilePage() {
                   </span>
                   <span className="text-lg" style={{ color: "var(--text-muted)" }}>/100</span>
                 </div>
-                <p className="mb-4 text-xs" style={{ color: "var(--text-muted)" }}>
-                  {target.stats.totalRatings} {target.stats.totalRatings === 1 ? "rating" : "ratings"}
-                </p>
                 <div className="space-y-3">
                   {catBars.map(({ label, value }) => (
                     <CategoryBar key={label} label={label} value={value} />
@@ -460,32 +457,6 @@ export default function TargetProfilePage() {
                 <p className="text-sm font-medium" style={{ color: "var(--danger)" }}>{saveError}</p>
               )}
             </form>
-          </Panel>
-        )}
-
-        {/* ── Recent ratings ────────────────────────────────────────────────── */}
-        {target.recentRatings.length > 0 && (
-          <Panel>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
-              Recent Ratings
-            </h2>
-            <div className="space-y-2">
-              {target.recentRatings.map((r) => (
-                <div
-                  key={r.id}
-                  className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm"
-                  style={{ background: "var(--surface-muted)" }}
-                >
-                  <span style={{ color: "var(--text-muted)" }}>
-                    {new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                  </span>
-                  <span className="font-semibold tabular-nums" style={{ color: "var(--foreground)" }}>
-                    {r.overallScore.toFixed(1)}
-                    <span className="ml-0.5 text-xs font-normal" style={{ color: "var(--text-muted)" }}>/100</span>
-                  </span>
-                </div>
-              ))}
-            </div>
           </Panel>
         )}
 

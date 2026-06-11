@@ -739,10 +739,6 @@ export default function LeaderboardPage() {
                               label="Score"
                               value={`${selectedRow.averageScore.toFixed(2)}/100`}
                             />
-                            <ProfileMetric
-                              label="Ratings"
-                              value={String(selectedRow.ratingCount)}
-                            />
 
                           </div>
                         </div>
