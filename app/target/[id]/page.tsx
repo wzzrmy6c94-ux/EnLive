@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { EnliveShell, Panel } from "@/components/enlive-shell";
+import { QrCodeGenerator } from "@/components/QrCodeGenerator";
 
 type TargetType = "venue" | "artist" | "city";
 
@@ -378,6 +379,15 @@ export default function TargetProfilePage() {
             </button>
           </Panel>
         </div>
+
+        {isOwner && (
+          <Panel>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+              Rating QR Code
+            </h2>
+            <QrCodeGenerator targetId={target.id} targetName={target.name} />
+          </Panel>
+        )}
 
         {/* ── Owner edit form ───────────────────────────────────────────────── */}
         {isOwner && editing && (

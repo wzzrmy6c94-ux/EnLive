@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EnliveShell, Panel } from "@/components/enlive-shell";
+import { QrCodeGenerator } from "@/components/QrCodeGenerator";
 
 type RatingInfo = {
   id: string;
@@ -123,6 +124,13 @@ export default function UserDashboard() {
                     <QuickLink href="/" label="Leaderboard" />
                     <QuickLink href={`/rate/${user.id}`} label="Your rating page" />
                   </div>
+                </Panel>
+
+                <Panel>
+                  <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                    Rating QR Code
+                  </h2>
+                  <QrCodeGenerator targetId={user.id} targetName={user.name} />
                 </Panel>
 
                 {/* Recent rating scorecards */}

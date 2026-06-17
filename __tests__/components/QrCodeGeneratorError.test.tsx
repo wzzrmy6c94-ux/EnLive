@@ -1,17 +1,22 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QrCodeGenerator } from '@/components/QrCodeGenerator';
-import axios from 'axios';
 
-jest.mock('axios');
+beforeEach(() => {
+  jest.restoreAllMocks();
+});
 
 (test as any)('shows loading and error states', async () => {
-  // First render – loading state
-  (axios.post as jest.Mock).mockImplementation(() => new Promise(() => {})); // never resolves
+  jest.spyOn(global, 'fetch').mockImplementation(() => new Promise(() => {}) as Promise<Response>);
   render(<QrCodeGenerator targetId="target-123" />);
-  expect(screen.getByText('Generating QR code…')).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Generate QR'));
+  expect(screen.getByText('Generating...')).toBeInTheDocument();
 
-  // Error state
-  (axios.post as jest.Mock).mockRejectedValue(new Error('Failed'));
+  jest.restoreAllMocks();
+  jest.spyOn(global, 'fetch').mockResolvedValue({
+    ok: false,
+    json: async () => ({ error: 'Failed' }),
+  } as Response);
   render(<QrCodeGenerator targetId="target-123" />);
-  await waitFor(() => expect(screen.getByText('Failed to generate QR code')).toBeInTheDocument());
+  fireEvent.click(screen.getAllByText('Generate QR')[1]);
+  await waitFor(() => expect(screen.getByText('Failed')).toBeInTheDocument());
 });

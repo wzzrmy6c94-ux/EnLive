@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { EnliveShell, Panel } from "@/components/enlive-shell";
 import { CATEGORY_LABELS, SCORE_SCALE } from "@/lib/enlive-store";
+import { QrCodeGenerator } from "@/components/QrCodeGenerator";
 
 type Target = {
   id: string;
@@ -24,9 +25,6 @@ export default function RatePage() {
   const [me, setMe] = useState<{userId: string} | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [qrLoading, setQrLoading] = useState(false);
-  const [qrUrl, setQrUrl] = useState<string | null>(null);
-  const [generatedQrToken, setGeneratedQrToken] = useState<string | null>(null);
   const [values, setValues] = useState<{ c1: number; c2: number; c3: number; c4: string }>({ c1: 4, c2: 4, c3: 4, c4: "" });
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -133,48 +131,9 @@ export default function RatePage() {
           <Panel className="w-full max-w-md space-y-4">
             <div className="text-center">
               <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>QR Code Generator</h2>
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>Generate QR for fans/visitors to rate your {target.role}.</p>
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>{target.name}</p>
             </div>
-            <button
-              onClick={async () => {
-                setQrLoading(true);
-                try {
-                  const res = await fetch('/api/qr/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ targetId: target.id }),
-                  });
-                  const data = await res.json();
-                  if (res.ok) {
-                    setQrUrl(data.imageUrl);
-                    setGeneratedQrToken(data.token);
-                  } else {
-                    setError(data.error || 'Failed to generate QR');
-                  }
-                } catch (err) {
-                  setError('Failed to generate QR');
-                } finally {
-                  setQrLoading(false);
-                }
-              }}
-              disabled={qrLoading}
-              className="w-full rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
-              style={{ background: "var(--primary)", color: "var(--button-text)" }}
-            >
-              {qrLoading ? 'Generating...' : 'Generate QR Code'}
-            </button>
-            {qrUrl && (
-              <div className="space-y-3">
-                <img src={qrUrl} alt="QR Code" className="mx-auto rounded-xl shadow-lg max-w-[200px] w-full" />
-                <div className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
-                  Token: <code>{generatedQrToken}</code>
-                </div>
-                <div className="flex gap-2">
-                  <a href={qrUrl} download={`enlive-${target.name.replace(/\\s+/g, '-').toLowerCase()}-qr.png`} className="flex-1 rounded-xl py-2 text-xs font-semibold text-center transition" style={{ background: "var(--surface-strong)", color: "var(--foreground)" }}>Download PNG</a>
-                  <Link href={`/target/${target.id}`} className="flex-1 rounded-xl py-2 text-xs font-semibold text-center transition bg-[var(--primary)] text-[var(--button-text)]">View Profile</Link>
-                </div>
-              </div>
-            )}
+            <QrCodeGenerator targetId={target.id} targetName={target.name} />
             {error && <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>}
             <Link href={`/target/${target.id}`} className="block text-center text-sm underline" style={{ color: "var(--text-muted)" }}>← Back to profile</Link>
           </Panel>
