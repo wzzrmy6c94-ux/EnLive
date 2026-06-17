@@ -4,6 +4,7 @@ set -euo pipefail
 # ─────────────────────────────────────────────
 #  EnLive — VPS Install Script
 #  Tested on Ubuntu 22.04 / 24.04
+#  Legacy only. The live EnLive deployment runs through Vercel.
 # ─────────────────────────────────────────────
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'

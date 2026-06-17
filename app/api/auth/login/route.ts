@@ -17,6 +17,31 @@ const loginSchema = z.object({
   ),
 });
 
+function knownLoginSetupError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : null;
+
+  if (message.includes("ENLIVE_SESSION_SECRET")) {
+    return "Server auth is not configured. Add ENLIVE_SESSION_SECRET in Vercel and redeploy.";
+  }
+
+  if (
+    code === "42703" ||
+    message.includes('column "username" does not exist') ||
+    message.includes('column "email_verified_at" does not exist') ||
+    message.includes('column "email_verification_token_hash" does not exist') ||
+    message.includes('column "email_verification_expires_at" does not exist') ||
+    message.includes('column "square_subscription_id" does not exist')
+  ) {
+    return "Database migration is required. Deploy with the Vercel migration build or run npm run db:migrate.";
+  }
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
 
@@ -86,6 +111,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logWarn("auth.login.error", { requestId, error: message });
+    const setupError = knownLoginSetupError(error);
+    if (setupError) {
+      return withRequestId(
+        NextResponse.json({ error: setupError }, { status: 500 }),
+        requestId,
+      );
+    }
+
     return withRequestId(
       NextResponse.json({ error: "Login failed. Please try again." }, { status: 500 }),
       requestId,

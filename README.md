@@ -11,8 +11,8 @@ A location-based web platform where audiences rate live music performances, venu
 - **Auth**: Signed session cookies (iron-session style, ENLIVE_SESSION_SECRET)
 - **Styling**: Tailwind CSS + CSS custom properties (light/dark theme)
 - **Validation**: Zod with sanitization transforms
-- **Process manager**: PM2
-- **Web server**: nginx (reverse proxy + SSL via Certbot)
+- **Hosting**: Vercel
+- **Runtime**: Vercel Serverless Functions for API routes
 
 ---
 
@@ -27,10 +27,11 @@ A location-based web platform where audiences rate live music performances, venu
 - [x] Light / dark theme toggle (persisted to localStorage, no flash on load)
 
 ### Artist / Venue Accounts
-- [x] Registration (`/users/register`) — separate flows for artists and venues
-  - Artists: name, email, password, genre (no location required)
-  - Venues: name, email, password, town/city
-- [x] Login (`/users/auth/login`) with bcrypt password verification
+- [x] Registration (`/users/register`) — username-first account creation with email verification
+  - Artists: username, name, email, password, genre
+  - Venues: username, name, email, password, town/city
+- [x] Login (`/users/auth/login`) with username + bcrypt password verification
+- [x] First-login email verification for admin-created accounts without email
 - [x] Dashboard — total ratings, average score, category breakdown
 - [x] Profile editing on `/target/[id]` — name, location (venues), genre (artists), bio (500 chars)
   - Bio stored in `settings_json` column — no schema migration required
@@ -54,8 +55,12 @@ A location-based web platform where audiences rate live music performances, venu
 |---|---|---|
 | id | TEXT | Format: `A000001` (artist), `V000001` (venue), `C000001` (city) |
 | enlive_uid | TEXT | Human-readable EnLive UID |
+| username | TEXT | Primary login identifier, unique case-insensitively |
 | name | TEXT | |
-| email | TEXT | Unique |
+| email | TEXT | Unique, optional until first-login verification |
+| email_verified_at | TIMESTAMPTZ | Set when verification is complete |
+| email_verification_token_hash | TEXT | Hashed email verification token |
+| email_verification_expires_at | TIMESTAMPTZ | Verification token expiry |
 | password_hash | TEXT | bcrypt |
 | role | TEXT | `artist` \| `venue` \| `city` \| `admin` |
 | location | TEXT | Town/city (optional for artists) |
@@ -102,30 +107,37 @@ Postgres-backed per-device cooldown table.
 
 ---
 
-## Deployment (VPS — Ubuntu 22.04/24.04)
+## Deployment (Vercel)
 
-### First-time install
+Production is deployed through Vercel from the GitHub repository. Pushing to the connected branch, usually `main`, triggers a Vercel deployment.
+
+### Build
+Vercel uses [vercel.json](./vercel.json):
+
 ```bash
-sudo bash install.sh
+npm run vercel-build
 ```
-Installs Node.js, PostgreSQL, PM2, nginx, configures `.env.local`, runs migrations, builds, and optionally sets up SSL via Certbot.
 
-### Update to latest
+That command runs database migrations first, then builds the Next.js app:
+
 ```bash
-sudo bash update.sh
+npm run db:migrate && next build
 ```
-Creates a temporary 2 GB swap, pulls `origin/main`, runs `npm ci` + `npm run build`, reloads PM2, then removes the swap automatically.
 
-### Environment variables (`.env.local`)
+This prevents the app from deploying code that expects a newer schema before the database has been migrated.
+
+### Environment variables
+Set these in Vercel Project Settings → Environment Variables:
+
 ```
-DATABASE_URL=postgresql://user:pass@localhost:5432/enlive
+DATABASE_URL=postgresql://user:pass@host:5432/enlive
 NEXT_PUBLIC_APP_URL=https://enlive.app
 ENLIVE_SESSION_SECRET=<32+ char random string>
 RECAPTCHA_SITE_KEY=
 RECAPTCHA_SECRET_KEY=
-NODE_ENV=production
-PORT=3001
 ```
+
+`NODE_ENV` is set automatically by Vercel. `PORT`, PM2, nginx, SSH deploys, and VPS update scripts are not used for the live Vercel deployment.
 
 ### Manual commands
 ```bash
@@ -134,9 +146,12 @@ npm run db:seed        # Seed demo data (only if DB is empty)
 npm run db:setup       # migrate + seed
 npm run dev            # Local dev server
 npm run build          # Production build
-pm2 logs enlive        # App logs
-pm2 status             # Process status
 ```
+
+For production logs and deploy status, use the Vercel dashboard or Vercel CLI.
+
+### Legacy VPS scripts
+`install.sh` and `update.sh` are retained only for legacy/self-hosted VPS deployments. They are not part of the current live Vercel workflow.
 
 ---
 
@@ -154,7 +169,7 @@ npm run dev
 
 ## Notes
 
-- `.app` TLD is HSTS preloaded — HTTPS is required in all browsers. SSL must be configured via Certbot before the site is accessible.
+- `.app` TLD is HSTS preloaded — HTTPS is required in all browsers. Vercel provides HTTPS for the deployed site.
 - `settings_json` is a freeform JSON column used to store profile-specific settings without schema migrations. Bio is read/written by merging into the existing blob.
 - Rating endpoint rate limiting is Postgres-backed and shared across all app instances using the same database.
 
