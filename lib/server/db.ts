@@ -533,15 +533,22 @@ export async function listUsersForAdmin() {
     const res = await db.query<{
       id: string;
       enlive_uid: string;
+      username: string;
       name: string;
+      email: string | null;
+      email_verified_at: string | null;
       role: TargetType;
       location: string;
+      genre: string | null;
+      country: string | null;
+      square_subscription_id: string | null;
       created_at: string;
       average_score: number | null;
       rating_count: string;
     }>(
       `SELECT
-         u.id,u.enlive_uid,u.name,u.role,u.location,u.created_at,
+         u.id,u.enlive_uid,u.username,u.name,u.email,u.email_verified_at,u.role,u.location,u.genre,u.country,
+         u.square_subscription_id,u.created_at,
          ROUND(AVG(r.overall_score)::numeric,2)::float8 AS average_score,
          COUNT(r.id)::text AS rating_count
        FROM users u
@@ -554,9 +561,15 @@ export async function listUsersForAdmin() {
     return res.rows.map((u) => ({
       id: u.id,
       enliveUid: u.enlive_uid,
+      username: u.username,
       name: u.name,
+      email: u.email,
+      emailVerified: Boolean(u.email_verified_at),
       role: u.role,
       location: u.location,
+      genre: u.genre,
+      country: u.country,
+      squareSubscriptionId: u.square_subscription_id,
       createdAt: new Date(u.created_at).toISOString(),
       averageScore: u.average_score ?? 0,
       ratingCount: Number(u.rating_count),

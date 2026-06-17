@@ -1,15 +1,21 @@
 "use client";
 
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { Panel } from "@/components/enlive-shell";
 
 type AdminUserRow = {
   id: string;
   enliveUid: string;
+  username: string;
   name: string;
+  email: string | null;
+  emailVerified: boolean;
   role: "venue" | "artist" | "city";
   location: string;
+  genre: string | null;
+  country: string | null;
+  squareSubscriptionId: string | null;
   createdAt: string;
   averageScore: number;
   ratingCount: number;
@@ -19,6 +25,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/overview", { cache: "no-store" })
@@ -37,7 +44,7 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Venues and artists currently registered in the system.
+            Click a profile to inspect admin-only account details.
           </p>
         </div>
         <Link
@@ -58,6 +65,7 @@ export default function AdminUsersPage() {
               <thead className="text-[var(--text-muted)]" style={{ background: "var(--surface)" }}>
                 <tr>
                   <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Username</th>
                   <th className="px-3 py-2 font-medium">EnLive ID</th>
                   <th className="px-3 py-2 font-medium">Type</th>
                   <th className="px-3 py-2 font-medium">Town</th>
@@ -67,22 +75,110 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((row) => (
-                  <tr key={row.id} className="border-t" style={{ borderColor: "var(--border)" }}>
-                    <td className="px-3 py-2 text-[var(--foreground)]">{row.name}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{row.enliveUid}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{row.role}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{row.location}</td>
-                    <td className="px-3 py-2 text-[var(--primary)]">{row.averageScore.toFixed(2)}/100</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{row.ratingCount}</td>
-                    <td className="px-3 py-2 text-[var(--text-muted)]">{new Date(row.createdAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
+                {users.map((row) => {
+                  const expanded = expandedId === row.id;
+                  return (
+                    <Fragment key={row.id}>
+                      <tr
+                        className="cursor-pointer border-t transition hover:bg-[var(--surface)]"
+                        style={{ borderColor: "var(--border)" }}
+                        onClick={() => setExpandedId(expanded ? null : row.id)}
+                      >
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            className="text-left font-medium text-[var(--foreground)] transition hover:text-[var(--primary)]"
+                            aria-expanded={expanded}
+                            aria-controls={`admin-user-${row.id}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setExpandedId(expanded ? null : row.id);
+                            }}
+                          >
+                            <span className="mr-2 inline-block w-4 text-[var(--text-muted)]">
+                              {expanded ? "−" : "+"}
+                            </span>
+                            {row.name}
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs text-[var(--text-muted)]">{row.username}</td>
+                        <td className="px-3 py-2 text-[var(--text-muted)]">{row.enliveUid}</td>
+                        <td className="px-3 py-2 text-[var(--text-muted)]">{row.role}</td>
+                        <td className="px-3 py-2 text-[var(--text-muted)]">{row.location || "—"}</td>
+                        <td className="px-3 py-2 text-[var(--primary)]">{row.averageScore.toFixed(2)}/100</td>
+                        <td className="px-3 py-2 text-[var(--text-muted)]">{row.ratingCount}</td>
+                        <td className="px-3 py-2 text-[var(--text-muted)]">{new Date(row.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                      {expanded ? (
+                        <tr id={`admin-user-${row.id}`} className="border-t" style={{ borderColor: "var(--border)" }}>
+                          <td colSpan={8} className="px-3 py-4">
+                            <div
+                              className="grid gap-4 rounded-xl border p-4 md:grid-cols-[1.2fr_1fr]"
+                              style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+                            >
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <Detail label="Username" value={row.username} mono />
+                                <Detail label="Email" value={row.email ?? "Not set"} mono />
+                                <Detail label="Email status" value={row.emailVerified ? "Verified" : "Needs verification"} />
+                                <Detail label="Internal ID" value={row.id} mono />
+                                <Detail label="EnLive ID" value={row.enliveUid} mono />
+                                <Detail label="Role" value={row.role} />
+                                <Detail label="Town / City" value={row.location || "—"} />
+                                <Detail label="Genre" value={row.genre ?? "—"} />
+                                <Detail label="Country" value={row.country ?? "—"} />
+                                <Detail
+                                  label="Subscription"
+                                  value={row.squareSubscriptionId ? `Active (${row.squareSubscriptionId})` : "No subscription ID"}
+                                  mono={Boolean(row.squareSubscriptionId)}
+                                />
+                              </div>
+                              <div className="flex flex-col justify-between gap-3 rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
+                                <div>
+                                  <div className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">Admin shortcuts</div>
+                                  <p className="mt-2 text-sm text-[var(--text-muted)]">
+                                    Open the public profile or rating form for this account.
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Link
+                                    href={`/target/${row.id}`}
+                                    className="rounded-xl border px-3 py-2 text-xs font-semibold transition hover:opacity-80"
+                                    style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                                  >
+                                    Public profile
+                                  </Link>
+                                  <Link
+                                    href={`/rate/${row.id}`}
+                                    className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:opacity-90"
+                                    style={{ background: "var(--primary)", color: "var(--button-text)" }}
+                                  >
+                                    Rating form
+                                  </Link>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         ) : null}
       </Panel>
     </main>
+  );
+}
+
+function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">{label}</div>
+      <div className={`mt-1 break-words text-sm text-[var(--foreground)] ${mono ? "font-mono text-xs" : ""}`}>
+        {value}
+      </div>
+    </div>
   );
 }
