@@ -192,3 +192,46 @@ body {
   background: var(--selection);
   color: var(--foreground);
 }
+
+.enlive-rating-slider {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.enlive-rating-slider:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+.enlive-rating-slider::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.enlive-rating-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: -0.375rem;
+  border: 2px solid var(--surface);
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 4px 16px var(--shadow);
+}
+
+.enlive-rating-slider::-moz-range-track {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.enlive-rating-slider::-moz-range-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--surface);
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 4px 16px var(--shadow);
+}

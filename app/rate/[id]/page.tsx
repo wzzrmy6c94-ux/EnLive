@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { EnliveShell, Panel } from "@/components/enlive-shell";
-import { CATEGORY_LABELS, SCORE_SCALE } from "@/lib/enlive-store";
 import { QrCodeGenerator } from "@/components/QrCodeGenerator";
 
 type Target = {
@@ -13,6 +12,40 @@ type Target = {
   role: "venue" | "artist";
   location: string;
 };
+
+type RatingValues = {
+  c1: number;
+  c2: number;
+  c3: number;
+  c4: number;
+};
+
+type RatingCategory = {
+  label: string;
+  low: string;
+  high: string;
+};
+
+const SCORE_SCALE = { min: 0, max: 100 } as const;
+
+const RATING_CATEGORIES: Record<Target["role"], RatingCategory[]> = {
+  venue: [
+    { label: "Sound & Technical Experience", low: "Painful", high: "Crystal clear" },
+    { label: "Atmosphere & Ambience", low: "Flat", high: "Electric" },
+    { label: "Staff & Operations", low: "Chaotic", high: "Seamless" },
+    { label: "Amenities & Value", low: "Not worth it", high: "Worth it" },
+  ],
+  artist: [
+    { label: "Performance Quality", low: "Rough", high: "Flawless" },
+    { label: "Stage Presence & Engagement", low: "Awkward", high: "Captivating" },
+    { label: "Set & Musical Experience", low: "Forgettable", high: "Unforgettable" },
+    { label: "Fan Experience", low: "Disconnected", high: "Unreal" },
+  ],
+};
+
+function sliderPercent(value: number) {
+  return ((value - SCORE_SCALE.min) / (SCORE_SCALE.max - SCORE_SCALE.min)) * 100;
+}
 
 export default function RatePage() {
   const params = useParams<{ id: string }>();
@@ -25,7 +58,7 @@ export default function RatePage() {
   const [me, setMe] = useState<{userId: string} | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [values, setValues] = useState<{ c1: number; c2: number; c3: number; c4: string }>({ c1: 4, c2: 4, c3: 4, c4: "" });
+  const [values, setValues] = useState<RatingValues>({ c1: 50, c2: 50, c3: 50, c4: 50 });
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,6 +175,8 @@ export default function RatePage() {
     );
   }
 
+  const categories = RATING_CATEGORIES[target.role];
+
   return (
     <EnliveShell
       title={`Rate ${target.name}`}
@@ -162,7 +197,7 @@ export default function RatePage() {
                 category1: values.c1,
                 category2: values.c2,
                 category3: values.c3,
-                category4: values.c4 === "" ? undefined : Number(values.c4),
+                category4: values.c4,
               };
               try {
                 const res = await fetch('/api/ratings', {
@@ -172,7 +207,7 @@ export default function RatePage() {
                 });
                 const data = (await res.json()) as { error?: string; rating?: { overallScore: number } };
                 if (!res.ok || !data.rating) throw new Error(data.error || 'Failed to submit rating.');
-                setMessage(`Thanks. Your rating was recorded with overall score ${data.rating.overallScore.toFixed(2)}/100.`);
+                setMessage("Thanks. Your rating was recorded.");
                 if (qrToken) {
                   await fetch('/api/qr/use', {
                     method: 'POST',
@@ -186,38 +221,41 @@ export default function RatePage() {
               }
             }}
           >
-            {/* Use sliders for the first three categories */}
-            {[1, 2, 3].map((idx) => (
-              <label key={idx} className="block rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
-                <div className="mb-2 text-sm font-medium text-[var(--foreground)]">{CATEGORY_LABELS[idx - 1]}</div>
-                <input
-                  type="range"
-                  min={SCORE_SCALE.min}
-                  max={SCORE_SCALE.max}
-                  step={1}
-                  value={values[`c${idx}` as "c1" | "c2" | "c3"]}
-                  onChange={(e) => setValues((prev) => ({ ...prev, [`c${idx}`]: Number(e.target.value) } as typeof prev))}
-                  className="w-full"
-                />
-                <div className="mt-1 text-center text-sm text-[var(--foreground)]">{values[`c${idx}` as "c1" | "c2" | "c3"]}</div>
-              </label>
-            ))}
+            {categories.map((category, index) => {
+              const key = `c${index + 1}` as keyof RatingValues;
+              const value = values[key];
+              const pct = sliderPercent(value);
 
-            {/* Category 4 remains optional – keep a simple select */}
-            <label className="block rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
-              <div className="mb-2 text-sm font-medium text-[var(--foreground)]">{CATEGORY_LABELS[3]}</div>
-              <select
-                value={values.c4}
-                onChange={(e) => setValues((prev) => ({ ...prev, c4: e.target.value }))}
-                className="w-full rounded-xl border px-3 py-2 text-sm outline-none"
-                style={{ borderColor: "var(--border)", background: "var(--surface-elevated)", color: "var(--foreground)" }}
-              >
-                <option value="">Skip this category</option>
-                {Array.from({ length: SCORE_SCALE.max - SCORE_SCALE.min + 1 }, (_, i) => SCORE_SCALE.min + i).map((score) => (
-                  <option key={score} value={score}>{score}</option>
-                ))}
-              </select>
-            </label>
+              return (
+                <label
+                  key={category.label}
+                  className="block rounded-2xl border p-4"
+                  style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}
+                >
+                  <div className="mb-3 text-sm font-medium text-[var(--foreground)]">{category.label}</div>
+                  <input
+                    type="range"
+                    min={SCORE_SCALE.min}
+                    max={SCORE_SCALE.max}
+                    step="any"
+                    value={value}
+                    aria-label={category.label}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      setValues((prev) => ({ ...prev, [key]: next }));
+                    }}
+                    className="enlive-rating-slider h-6 w-full cursor-pointer rounded-full"
+                    style={{
+                      background: `linear-gradient(90deg, var(--primary) 0%, var(--primary) ${pct}%, var(--surface-elevated) ${pct}%, var(--surface-elevated) 100%)`,
+                    }}
+                  />
+                  <div className="mt-2 flex items-center justify-between gap-4 text-xs font-medium text-[var(--text-muted)]">
+                    <span>{category.low}</span>
+                    <span>{category.high}</span>
+                  </div>
+                </label>
+              );
+            })}
 
             {error ? <p className="text-sm text-[var(--primary)]">{error}</p> : null}
             {message ? <p className="text-sm text-[var(--primary)]">{message}</p> : null}

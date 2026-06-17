@@ -43,8 +43,8 @@ type TargetDetails = {
 };
 
 const CATEGORY_LABELS: Record<TabType, string[]> = {
-  venue: ["Atmosphere", "Sound Quality", "Staff", "Value"],
-  artist: ["Performance", "Stage Presence", "Setlist", "Crowd Engagement"],
+  venue: ["Sound & Technical Experience", "Atmosphere & Ambience", "Staff & Operations", "Amenities & Value"],
+  artist: ["Performance Quality", "Stage Presence & Engagement", "Set & Musical Experience", "Fan Experience"],
   city: [
     "Live Music Culture",
     "Venue Density",
@@ -870,7 +870,7 @@ function CategoryBar({
       <div className="mb-1 flex items-center justify-between text-xs">
         <span style={{ color: "var(--text-muted)" }}>{label}</span>
         <span className="font-medium" style={{ color: "var(--text-strong)" }}>
-          {value.toFixed(1)}
+          {value.toFixed(1)}/100
         </span>
       </div>
       <div

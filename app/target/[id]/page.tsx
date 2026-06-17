@@ -37,8 +37,8 @@ type Target = {
 };
 
 const CATEGORY_LABELS: Record<TargetType, string[]> = {
-  artist: ["Performance", "Stage Presence", "Setlist", "Crowd Engagement"],
-  venue: ["Atmosphere", "Sound Quality", "Staff", "Value"],
+  artist: ["Performance Quality", "Stage Presence & Engagement", "Set & Musical Experience", "Fan Experience"],
+  venue: ["Sound & Technical Experience", "Atmosphere & Ambience", "Staff & Operations", "Amenities & Value"],
   city: ["Live Music Culture", "Venue Density", "Artist Support", "Audience Turnout"],
 };
 
@@ -51,13 +51,13 @@ const GENRES = [
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 function CategoryBar({ label, value }: { label: string; value: number }) {
-  const pct = Math.round((value / 5) * 100);
+  const pct = Math.min(100, Math.max(0, Math.round(value)));
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
         <span style={{ color: "var(--text-muted)" }}>{label}</span>
         <span className="font-semibold" style={{ color: "var(--foreground)" }}>
-          {value.toFixed(1)} <span style={{ color: "var(--text-muted)" }}>/ 5</span>
+          {value.toFixed(1)} <span style={{ color: "var(--text-muted)" }}>/ 100</span>
         </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-muted)" }}>

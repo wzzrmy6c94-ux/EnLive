@@ -52,17 +52,17 @@ const SESSION_KEY = "enlive:session-user-id";
 const DEVICE_KEY = "enlive:device-id";
 const DUPLICATE_WINDOW_MS = 60_000;
 
-export const SCORE_SCALE = { min: 1, max: 5 } as const;
+export const SCORE_SCALE = { min: 0, max: 100 } as const;
 
 function toHundredPointScore(value: number) {
-  return round((value / SCORE_SCALE.max) * 100);
+  return round(value);
 }
 
 export const CATEGORY_LABELS = [
-  "Sound",
-  "Atmosphere",
-  "Stage Presence",
-  "Value (optional)",
+  "Category 1",
+  "Category 2",
+  "Category 3",
+  "Category 4",
 ] as const;
 
 const seedUsers: User[] = [
@@ -118,11 +118,11 @@ const seedRatings: Rating[] = [
     id: "r-1",
     targetId: "venue-crown-social",
     targetType: "venue",
-    category1: 5,
-    category2: 4,
-    category3: 4,
-    category4: 4,
-    overallScore: 85,
+    category1: 100,
+    category2: 75,
+    category3: 75,
+    category4: 75,
+    overallScore: 81.25,
     location: "Chorley",
     deviceId: "seed-device-a",
     createdAt: "2026-02-21T19:10:00.000Z",
@@ -131,11 +131,11 @@ const seedRatings: Rating[] = [
     id: "r-2",
     targetId: "venue-crown-social",
     targetType: "venue",
-    category1: 4,
-    category2: 5,
-    category3: 4,
-    category4: 5,
-    overallScore: 90,
+    category1: 75,
+    category2: 100,
+    category3: 75,
+    category4: 100,
+    overallScore: 87.5,
     location: "Chorley",
     deviceId: "seed-device-b",
     createdAt: "2026-02-21T19:20:00.000Z",
@@ -144,11 +144,11 @@ const seedRatings: Rating[] = [
     id: "r-3",
     targetId: "artist-neon-harbor",
     targetType: "artist",
-    category1: 5,
-    category2: 5,
-    category3: 5,
-    category4: 4,
-    overallScore: 95,
+    category1: 100,
+    category2: 100,
+    category3: 100,
+    category4: 75,
+    overallScore: 93.75,
     location: "Chorley",
     deviceId: "seed-device-c",
     createdAt: "2026-02-22T20:00:00.000Z",
@@ -157,10 +157,10 @@ const seedRatings: Rating[] = [
     id: "r-4",
     targetId: "venue-river-room",
     targetType: "venue",
-    category1: 4,
-    category2: 4,
-    category3: 3,
-    overallScore: 73.4,
+    category1: 75,
+    category2: 75,
+    category3: 50,
+    overallScore: 66.67,
     location: "Preston",
     deviceId: "seed-device-d",
     createdAt: "2026-02-22T21:00:00.000Z",
@@ -169,11 +169,11 @@ const seedRatings: Rating[] = [
     id: "r-5",
     targetId: "artist-juno-vale",
     targetType: "artist",
-    category1: 4,
-    category2: 3,
-    category3: 5,
-    category4: 4,
-    overallScore: 4,
+    category1: 75,
+    category2: 50,
+    category3: 100,
+    category4: 75,
+    overallScore: 75,
     location: "Preston",
     deviceId: "seed-device-e",
     createdAt: "2026-02-22T21:10:00.000Z",

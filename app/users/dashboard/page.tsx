@@ -32,8 +32,8 @@ type UserData = {
 };
 
 const CATEGORY_LABELS: Record<string, string[]> = {
-  venue: ["Atmosphere", "Sound Quality", "Staff", "Value"],
-  artist: ["Performance", "Stage Presence", "Setlist", "Crowd Engagement"],
+  venue: ["Sound & Technical Experience", "Atmosphere & Ambience", "Staff & Operations", "Amenities & Value"],
+  artist: ["Performance Quality", "Stage Presence & Engagement", "Set & Musical Experience", "Fan Experience"],
 };
 
 export default function UserDashboard() {
@@ -147,11 +147,11 @@ export default function UserDashboard() {
                               <span className="text-sm text-[var(--text-muted)]">Overall {r.overallScore.toFixed(1)}/100</span>
                             </summary>
                             <div className="mt-2 space-y-1 text-[var(--foreground)]">
-                              <div>Category 1: {r.category1}/5</div>
-                              <div>Category 2: {r.category2}/5</div>
-                              <div>Category 3: {r.category3}/5</div>
+                              <div>Category 1: {r.category1.toFixed(1)}/100</div>
+                              <div>Category 2: {r.category2.toFixed(1)}/100</div>
+                              <div>Category 3: {r.category3.toFixed(1)}/100</div>
                               {r.category4 !== null && r.category4 !== undefined && (
-                                <div>Category 4: {r.category4}/5</div>
+                                <div>Category 4: {r.category4.toFixed(1)}/100</div>
                               )}
                             </div>
                           </details>
@@ -184,12 +184,12 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 }
 
 function CategoryBar({ label, value }: { label: string; value: number }) {
-  const pct = Math.min(100, Math.round((value / 5) * 100));
+  const pct = Math.min(100, Math.max(0, Math.round(value)));
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
         <span className="text-[var(--text-muted)]">{label}</span>
-        <span className="font-medium text-[var(--foreground)]">{value.toFixed(1)}/5</span>
+        <span className="font-medium text-[var(--foreground)]">{value.toFixed(1)}/100</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-muted)" }}>
         <div

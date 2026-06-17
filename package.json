@@ -11,7 +11,8 @@
     "db:migrate": "node scripts/migrate-db.mjs",
     "db:seed": "node scripts/bootstrap-db.mjs",
     "db:setup": "npm run db:migrate && npm run db:seed",
-    "load:test": "node scripts/load-test.mjs"
+    "load:test": "node scripts/load-test.mjs",
+    "test:ranking": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test __tests__/lib/ranking.test.mts"
   },
   "dependencies": {
     "axios": "^1.15.0",

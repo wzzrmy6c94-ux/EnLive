@@ -8,12 +8,16 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
+const scoreSchema = z.coerce.number().refine(
+  (value) => Number.isFinite(value) && value >= 0 && value <= 100,
+);
+
 const ratingSchema = z.object({
   targetId: z.string().transform(sanitizeText).pipe(z.string().min(1).max(200)),
-  category1: z.coerce.number(),
-  category2: z.coerce.number(),
-  category3: z.coerce.number(),
-  category4: z.coerce.number().optional().nullable(),
+  category1: scoreSchema,
+  category2: scoreSchema,
+  category3: scoreSchema,
+  category4: scoreSchema.optional().nullable(),
 });
 
 function getDeviceId(req: NextRequest) {

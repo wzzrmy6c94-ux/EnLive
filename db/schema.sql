@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS users (
   country TEXT,
   enlive_uid TEXT UNIQUE,
   settings_json TEXT,
+  current_score DOUBLE PRECISION CHECK (current_score IS NULL OR (current_score >= 0 AND current_score <= 100)),
+  denominator DOUBLE PRECISION NOT NULL DEFAULT 0 CHECK (denominator >= 0),
+  last_rating_timestamp TIMESTAMPTZ,
+  rating_count INTEGER NOT NULL DEFAULT 0 CHECK (rating_count >= 0),
   created_at TIMESTAMPTZ NOT NULL
 );
 
@@ -27,11 +31,11 @@ CREATE TABLE IF NOT EXISTS ratings (
   id TEXT PRIMARY KEY,
   target_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   target_type TEXT NOT NULL CHECK (target_type IN ('venue','artist','city')),
-  category_1_score DOUBLE PRECISION NOT NULL,
-  category_2_score DOUBLE PRECISION NOT NULL,
-  category_3_score DOUBLE PRECISION NOT NULL,
-  category_4_score DOUBLE PRECISION,
-  overall_score DOUBLE PRECISION NOT NULL,
+  category_1_score DOUBLE PRECISION NOT NULL CHECK (category_1_score >= 0 AND category_1_score <= 100),
+  category_2_score DOUBLE PRECISION NOT NULL CHECK (category_2_score >= 0 AND category_2_score <= 100),
+  category_3_score DOUBLE PRECISION NOT NULL CHECK (category_3_score >= 0 AND category_3_score <= 100),
+  category_4_score DOUBLE PRECISION CHECK (category_4_score IS NULL OR (category_4_score >= 0 AND category_4_score <= 100)),
+  overall_score DOUBLE PRECISION NOT NULL CHECK (overall_score >= 0 AND overall_score <= 100),
   location TEXT NOT NULL,
   device_id TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL

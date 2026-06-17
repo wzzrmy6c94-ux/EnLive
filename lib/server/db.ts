@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { Pool, type PoolClient } from "pg";
+import { halfLifeDaysForRole, nextRatingAggregate } from "@/lib/ranking";
 import { hashPassword, verifyPassword } from "@/lib/server/auth";
 
 export type Role = "venue" | "artist" | "city" | "admin";
@@ -22,6 +23,10 @@ type UserRow = {
   settings_json?: string | null;
   square_subscription_id?: string | null;
   square_customer_id?: string | null;
+  current_score?: number | null;
+  denominator?: number | null;
+  last_rating_timestamp?: string | null;
+  rating_count?: number | null;
   created_at: string;
 };
 
@@ -39,10 +44,15 @@ type RatingRow = {
   created_at: string;
 };
 
-const CATEGORY_SCORE_MAX = 5;
+const CATEGORY_SCORE_MIN = 0;
+const CATEGORY_SCORE_MAX = 100;
 
-function toHundredPointScore(value: number) {
-  return Math.round(((value / CATEGORY_SCORE_MAX) * 100) * 100) / 100;
+function roundScore(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function isCategoryScore(value: number) {
+  return Number.isFinite(value) && value >= CATEGORY_SCORE_MIN && value <= CATEGORY_SCORE_MAX;
 }
 
 let poolSingleton: Pool | null = null;
@@ -256,21 +266,19 @@ export async function getLeaderboard(params: { targetType: TargetType; location?
       role: TargetType;
       internal_score: number | null;
       average_score: number | null;
-      rating_count: string;
-      last_rating_at: string | null;
+      rating_count: number;
+      last_rating_timestamp: string | null;
     }>(
       `SELECT
          u.id, u.name, u.location, u.genre, u.country, u.role,
-         AVG(r.overall_score)::float8 AS internal_score,
-         ROUND(AVG(r.overall_score)::numeric, 2)::float8 AS average_score,
-         COUNT(r.id)::text AS rating_count,
-         MAX(r.created_at)::text AS last_rating_at
+         u.current_score::float8 AS internal_score,
+         ROUND(u.current_score::numeric, 2)::float8 AS average_score,
+         u.rating_count,
+         u.last_rating_timestamp::text
        FROM users u
-       LEFT JOIN ratings r ON r.target_id = u.id AND r.target_type = u.role
        WHERE u.role = $1 AND (($2::text IS NULL OR $1::text = 'city') OR u.location = $2)
-       GROUP BY u.id
-       HAVING COUNT(r.id) >= $3
-       ORDER BY internal_score DESC NULLS LAST, COUNT(r.id) DESC, MAX(r.created_at) DESC NULLS LAST, u.name ASC`,
+         AND u.rating_count >= $3
+       ORDER BY internal_score DESC NULLS LAST, u.rating_count DESC, u.last_rating_timestamp DESC NULLS LAST, u.name ASC`,
       [params.targetType, params.location ?? null, minRatings],
     );
 
@@ -282,7 +290,7 @@ export async function getLeaderboard(params: { targetType: TargetType; location?
       country: row.country,
       role: row.role,
       averageScore: row.average_score ?? 0,
-      ratingCount: Number(row.rating_count),
+      ratingCount: row.rating_count,
     }));
   });
 }
@@ -297,17 +305,41 @@ export async function getTargetById(id: string) {
       location: string;
       genre: string | null;
       settings_json: string | null;
+      current_score: number | null;
+      rating_count: number;
       created_at: string;
-    }>(`SELECT id, enlive_uid, name, role, location, genre, settings_json, created_at FROM users WHERE id = $1 AND role IN ('venue','artist','city')`, [id]);
+    }>(
+      `SELECT
+         id, enlive_uid, name, role, location, genre, settings_json,
+         current_score, rating_count, created_at
+       FROM users
+       WHERE id = $1 AND role IN ('venue','artist','city')`,
+      [id],
+    );
     const target = targetRes.rows[0];
     if (!target) return null;
 
     const settings = JSON.parse(target.settings_json ?? "{}") as Record<string, unknown>;
     const bio = typeof settings.bio === "string" ? settings.bio : null;
 
+    const statsRes = await db.query<{
+      category_1_average: number | null;
+      category_2_average: number | null;
+      category_3_average: number | null;
+      category_4_average: number | null;
+    }>(
+      `SELECT
+         AVG(category_1_score)::float8 AS category_1_average,
+         AVG(category_2_score)::float8 AS category_2_average,
+         AVG(category_3_score)::float8 AS category_3_average,
+         AVG(category_4_score)::float8 AS category_4_average
+       FROM ratings
+       WHERE target_id = $1`,
+      [id],
+    );
+    const categoryStats = statsRes.rows[0];
     const ratingsRes = await db.query<RatingRow>(`SELECT * FROM ratings WHERE target_id = $1 ORDER BY created_at DESC LIMIT 25`, [id]);
     const ratings = ratingsRes.rows;
-    const c4 = ratings.map((r) => r.category_4_score).filter((v): v is number => typeof v === "number");
 
     return {
       id: target.id,
@@ -319,12 +351,12 @@ export async function getTargetById(id: string) {
       bio,
       createdAt: new Date(target.created_at).toISOString(),
       stats: {
-        totalRatings: ratings.length,
-        averageScore: mean(ratings.map((r) => Number(r.overall_score))),
-        category1Average: mean(ratings.map((r) => Number(r.category_1_score))),
-        category2Average: mean(ratings.map((r) => Number(r.category_2_score))),
-        category3Average: mean(ratings.map((r) => Number(r.category_3_score))),
-        category4Average: c4.length ? mean(c4.map(Number)) : null,
+        totalRatings: Number(target.rating_count),
+        averageScore: target.current_score == null ? 0 : Number(target.current_score),
+        category1Average: categoryStats?.category_1_average == null ? 0 : Number(categoryStats.category_1_average),
+        category2Average: categoryStats?.category_2_average == null ? 0 : Number(categoryStats.category_2_average),
+        category3Average: categoryStats?.category_3_average == null ? 0 : Number(categoryStats.category_3_average),
+        category4Average: categoryStats?.category_4_average == null ? null : Number(categoryStats.category_4_average),
       },
       recentRatings: ratings.map((r) => ({
         id: r.id,
@@ -348,55 +380,109 @@ export async function insertRating(input: {
   deviceId: string;
 }) {
   return withDb(async (db) => {
-    const targetRes = await db.query<{ id: string; role: TargetType; location: string }>(
-      `SELECT id, role, location FROM users WHERE id = $1 AND role IN ('venue','artist','city')`,
-      [input.targetId],
-    );
-    const target = targetRes.rows[0];
-    if (!target) return { ok: false as const, error: "Target not found." };
-
     const values = [input.category1, input.category2, input.category3];
     if (typeof input.category4 === "number") values.push(input.category4);
-    if (!values.every((v) => Number.isFinite(v) && v >= 1 && v <= 5)) {
-      return { ok: false as const, error: "Scores must be between 1 and 5." };
+    if (!values.every(isCategoryScore)) {
+      return { ok: false as const, error: "Scores must be between 0 and 100." };
     }
 
-    const dupRes = await db.query<{ created_at: string }>(
-      `SELECT created_at FROM ratings WHERE target_id = $1 AND device_id = $2 ORDER BY created_at DESC LIMIT 1`,
-      [input.targetId, input.deviceId],
-    );
-    const duplicate = dupRes.rows[0];
-    if (duplicate && Date.now() - Date.parse(duplicate.created_at) < 60_000) {
-      return { ok: false as const, error: "Please wait a minute before rating this act/venue again." };
-    }
-
-    const overall = toHundredPointScore(mean(values));
+    const overall = roundScore(mean(values));
     const id = `rating-${crypto.randomUUID()}`;
     const createdAt = new Date().toISOString();
-    await db.query(
-      `INSERT INTO ratings (
-        id,target_id,target_type,category_1_score,category_2_score,category_3_score,
-        category_4_score,overall_score,location,device_id,created_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-      [
-        id,
-        target.id,
-        target.role,
-        input.category1,
-        input.category2,
-        input.category3,
-        input.category4 ?? null,
-        overall,
-        target.location,
-        input.deviceId,
-        createdAt,
-      ],
-    );
 
-    return {
-      ok: true as const,
-      rating: { id, targetId: target.id, targetType: target.role, overallScore: overall, location: target.location, createdAt },
-    };
+    await db.query("BEGIN");
+    try {
+      const targetRes = await db.query<{
+        id: string;
+        role: TargetType;
+        location: string;
+        current_score: number | null;
+        denominator: number | null;
+        last_rating_timestamp: string | null;
+        rating_count: number | null;
+      }>(
+        `SELECT
+           id, role, location, current_score, denominator, last_rating_timestamp, rating_count
+         FROM users
+         WHERE id = $1 AND role IN ('venue','artist','city')
+         FOR UPDATE`,
+        [input.targetId],
+      );
+      const target = targetRes.rows[0];
+      if (!target) {
+        await db.query("ROLLBACK");
+        return { ok: false as const, error: "Target not found." };
+      }
+
+      const dupRes = await db.query<{ created_at: string }>(
+        `SELECT created_at FROM ratings WHERE target_id = $1 AND device_id = $2 ORDER BY created_at DESC LIMIT 1`,
+        [input.targetId, input.deviceId],
+      );
+      const duplicate = dupRes.rows[0];
+      if (duplicate && Date.now() - Date.parse(duplicate.created_at) < 60_000) {
+        await db.query("ROLLBACK");
+        return { ok: false as const, error: "Please wait a minute before rating this act/venue again." };
+      }
+
+      const aggregate = nextRatingAggregate(
+        {
+          currentScore: target.current_score == null ? null : Number(target.current_score),
+          denominator: target.denominator == null ? null : Number(target.denominator),
+          lastRatingTimestamp: target.last_rating_timestamp,
+          ratingCount: target.rating_count == null ? null : Number(target.rating_count),
+        },
+        overall,
+        createdAt,
+        halfLifeDaysForRole(target.role),
+      );
+
+      await db.query(
+        `INSERT INTO ratings (
+          id,target_id,target_type,category_1_score,category_2_score,category_3_score,
+          category_4_score,overall_score,location,device_id,created_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [
+          id,
+          target.id,
+          target.role,
+          input.category1,
+          input.category2,
+          input.category3,
+          input.category4 ?? null,
+          overall,
+          target.location,
+          input.deviceId,
+          createdAt,
+        ],
+      );
+
+      await db.query(
+        `UPDATE users
+         SET
+           current_score = $1,
+           denominator = $2,
+           last_rating_timestamp = $3,
+           rating_count = $4
+         WHERE id = $5`,
+        [
+          aggregate.currentScore,
+          aggregate.denominator,
+          aggregate.lastRatingTimestamp,
+          aggregate.ratingCount,
+          target.id,
+        ],
+      );
+
+      await db.query("COMMIT");
+
+      return {
+        ok: true as const,
+        rating: { id, targetId: target.id, targetType: target.role, overallScore: overall, location: target.location, createdAt },
+      };
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    }
   });
 }
 
@@ -544,17 +630,15 @@ export async function listUsersForAdmin() {
       square_subscription_id: string | null;
       created_at: string;
       average_score: number | null;
-      rating_count: string;
+      rating_count: number;
     }>(
       `SELECT
          u.id,u.enlive_uid,u.username,u.name,u.email,u.email_verified_at,u.role,u.location,u.genre,u.country,
          u.square_subscription_id,u.created_at,
-         ROUND(AVG(r.overall_score)::numeric,2)::float8 AS average_score,
-         COUNT(r.id)::text AS rating_count
+         ROUND(u.current_score::numeric,2)::float8 AS average_score,
+         u.rating_count
        FROM users u
-       LEFT JOIN ratings r ON r.target_id = u.id
        WHERE u.role IN ('venue','artist','city')
-       GROUP BY u.id
        ORDER BY u.created_at DESC`,
     );
 
@@ -572,7 +656,7 @@ export async function listUsersForAdmin() {
       squareSubscriptionId: u.square_subscription_id,
       createdAt: new Date(u.created_at).toISOString(),
       averageScore: u.average_score ?? 0,
-      ratingCount: Number(u.rating_count),
+      ratingCount: u.rating_count,
     }));
   });
 }
@@ -730,7 +814,22 @@ export async function updateUserProfile(id: string, input: { name: string; locat
 
 export async function clearAllRatings() {
   return withDb(async (db) => {
-    await db.query(`DELETE FROM ratings`);
+    await db.query("BEGIN");
+    try {
+      await db.query(`DELETE FROM ratings`);
+      await db.query(
+        `UPDATE users
+         SET current_score = NULL,
+             denominator = 0,
+             last_rating_timestamp = NULL,
+             rating_count = 0
+         WHERE role IN ('venue','artist','city')`,
+      );
+      await db.query("COMMIT");
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    }
   });
 }
 
