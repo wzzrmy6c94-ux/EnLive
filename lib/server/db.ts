@@ -44,8 +44,15 @@ type RatingRow = {
   created_at: string;
 };
 
+type PublicSocialLinks = {
+  website: string | null;
+  instagram: string | null;
+  tiktok: string | null;
+};
+
 const CATEGORY_SCORE_MIN = 0;
 const CATEGORY_SCORE_MAX = 100;
+const DUPLICATE_RATING_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function roundScore(value: number) {
   return Math.round(value * 100) / 100;
@@ -106,8 +113,39 @@ function hashEmailVerificationToken(token: string) {
 
 function defaultUserSettings(role: TargetType) {
   return role === "artist"
-    ? { genre: "Unknown", showcaseEnabled: true, socialLinks: false }
-    : { capacity: null, bookingOpen: true, wheelchairAccess: false };
+    ? { genre: "Unknown", showcaseEnabled: true, socialLinks: {} }
+    : { capacity: null, bookingOpen: true, wheelchairAccess: false, socialLinks: {} };
+}
+
+function readOptionalString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readPublicSocialLinks(settings: Record<string, unknown>): PublicSocialLinks {
+  const socialLinks = settings.socialLinks;
+  const source = socialLinks && typeof socialLinks === "object" && !Array.isArray(socialLinks)
+    ? (socialLinks as Record<string, unknown>)
+    : {};
+
+  return {
+    website: readOptionalString(source.website),
+    instagram: readOptionalString(source.instagram),
+    tiktok: readOptionalString(source.tiktok),
+  };
+}
+
+function normalizePublicUrl(value: string | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withProtocol);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString().slice(0, 240);
+  } catch {
+    return null;
+  }
 }
 
 function isValidEnliveUid(role: TargetType, enliveUid: string) {
@@ -254,6 +292,35 @@ export async function listLocations() {
 
 const DEFAULT_LEADERBOARD_MIN_RATINGS = 5;
 
+async function getCityRank(
+  db: PoolClient,
+  target: { id: string; role: TargetType; location: string },
+  minRatings = DEFAULT_LEADERBOARD_MIN_RATINGS,
+) {
+  const res = await db.query<{ city_rank: string }>(
+    `SELECT ranked.city_rank::text
+     FROM (
+       SELECT
+         u.id,
+         ROW_NUMBER() OVER (
+           ORDER BY u.current_score DESC NULLS LAST,
+                    u.rating_count DESC,
+                    u.last_rating_timestamp DESC NULLS LAST,
+                    u.name ASC
+         ) AS city_rank
+       FROM users u
+       WHERE u.role = $1
+         AND u.location = $2
+         AND u.rating_count >= $3
+     ) ranked
+     WHERE ranked.id = $4`,
+    [target.role, target.location, minRatings, target.id],
+  );
+
+  const rank = Number(res.rows[0]?.city_rank);
+  return Number.isFinite(rank) ? rank : null;
+}
+
 export async function getLeaderboard(params: { targetType: TargetType; location?: string; minRatings?: number }) {
   return withDb(async (db) => {
     const minRatings = Math.max(0, params.minRatings ?? DEFAULT_LEADERBOARD_MIN_RATINGS);
@@ -321,6 +388,8 @@ export async function getTargetById(id: string) {
 
     const settings = JSON.parse(target.settings_json ?? "{}") as Record<string, unknown>;
     const bio = typeof settings.bio === "string" ? settings.bio : null;
+    const address = readOptionalString(settings.address);
+    const socialLinks = readPublicSocialLinks(settings);
 
     const statsRes = await db.query<{
       category_1_average: number | null;
@@ -338,6 +407,7 @@ export async function getTargetById(id: string) {
       [id],
     );
     const categoryStats = statsRes.rows[0];
+    const cityRank = await getCityRank(db, target);
     const ratingsRes = await db.query<RatingRow>(`SELECT * FROM ratings WHERE target_id = $1 ORDER BY created_at DESC LIMIT 25`, [id]);
     const ratings = ratingsRes.rows;
 
@@ -349,6 +419,8 @@ export async function getTargetById(id: string) {
       location: target.location,
       genre: target.genre,
       bio,
+      address,
+      socialLinks,
       createdAt: new Date(target.created_at).toISOString(),
       stats: {
         totalRatings: Number(target.rating_count),
@@ -357,6 +429,7 @@ export async function getTargetById(id: string) {
         category2Average: categoryStats?.category_2_average == null ? 0 : Number(categoryStats.category_2_average),
         category3Average: categoryStats?.category_3_average == null ? 0 : Number(categoryStats.category_3_average),
         category4Average: categoryStats?.category_4_average == null ? null : Number(categoryStats.category_4_average),
+        cityRank,
       },
       recentRatings: ratings.map((r) => ({
         id: r.id,
@@ -419,9 +492,9 @@ export async function insertRating(input: {
         [input.targetId, input.deviceId],
       );
       const duplicate = dupRes.rows[0];
-      if (duplicate && Date.now() - Date.parse(duplicate.created_at) < 60_000) {
+      if (duplicate && Date.now() - Date.parse(duplicate.created_at) < DUPLICATE_RATING_WINDOW_MS) {
         await db.query("ROLLBACK");
-        return { ok: false as const, error: "Please wait a minute before rating this act/venue again." };
+        return { ok: false as const, error: "You've already rated this profile recently." };
       }
 
       const aggregate = nextRatingAggregate(
@@ -692,6 +765,204 @@ export async function listRecentRatingsForAdmin(limit = 20) {
   });
 }
 
+export async function listRatingsForAdmin(params: { targetId?: string; deviceId?: string; limit?: number } = {}) {
+  return withDb(async (db) => {
+    const limit = Math.min(200, Math.max(1, params.limit ?? 75));
+    const targetId = params.targetId?.trim() || null;
+    const deviceId = params.deviceId?.trim() || null;
+    const res = await db.query<{
+      id: string;
+      target_id: string;
+      target_type: TargetType;
+      category_1_score: number;
+      category_2_score: number;
+      category_3_score: number;
+      category_4_score: number | null;
+      overall_score: number;
+      location: string;
+      device_id: string;
+      created_at: string;
+      target_name: string | null;
+      same_device_target_count: string;
+      same_device_total_count: string;
+    }>(
+      `SELECT
+         r.id,
+         r.target_id,
+         r.target_type,
+         r.category_1_score,
+         r.category_2_score,
+         r.category_3_score,
+         r.category_4_score,
+         r.overall_score,
+         r.location,
+         r.device_id,
+         r.created_at,
+         u.name AS target_name,
+         (
+           SELECT COUNT(*)::text
+           FROM ratings same_target
+           WHERE same_target.target_id = r.target_id
+             AND same_target.device_id = r.device_id
+         ) AS same_device_target_count,
+         (
+           SELECT COUNT(*)::text
+           FROM ratings same_device
+           WHERE same_device.device_id = r.device_id
+         ) AS same_device_total_count
+       FROM ratings r
+       LEFT JOIN users u ON u.id = r.target_id
+       WHERE ($1::text IS NULL OR r.target_id = $1)
+         AND ($2::text IS NULL OR r.device_id = $2)
+       ORDER BY r.created_at DESC
+       LIMIT $3`,
+      [targetId, deviceId, limit],
+    );
+
+    return res.rows.map((r) => ({
+      id: r.id,
+      targetId: r.target_id,
+      targetType: r.target_type,
+      category1: Number(r.category_1_score),
+      category2: Number(r.category_2_score),
+      category3: Number(r.category_3_score),
+      category4: r.category_4_score == null ? null : Number(r.category_4_score),
+      overallScore: Number(r.overall_score),
+      location: r.location,
+      deviceId: r.device_id,
+      createdAt: new Date(r.created_at).toISOString(),
+      targetName: r.target_name,
+      sameDeviceTargetCount: Number(r.same_device_target_count),
+      sameDeviceTotalCount: Number(r.same_device_total_count),
+    }));
+  });
+}
+
+async function recalculateTargetRatingAggregate(db: PoolClient, targetId: string) {
+  const targetRes = await db.query<{ id: string; role: TargetType }>(
+    `SELECT id, role
+     FROM users
+     WHERE id = $1 AND role IN ('venue','artist','city')
+     FOR UPDATE`,
+    [targetId],
+  );
+  const target = targetRes.rows[0];
+  if (!target) return false;
+
+  const ratingsRes = await db.query<Pick<RatingRow, "overall_score" | "created_at" | "id">>(
+    `SELECT id, overall_score, created_at
+     FROM ratings
+     WHERE target_id = $1
+     ORDER BY created_at ASC, id ASC`,
+    [targetId],
+  );
+
+  let aggregate: {
+    currentScore: number | null;
+    denominator: number | null;
+    lastRatingTimestamp: string | null;
+    ratingCount: number | null;
+  } = {
+    currentScore: null,
+    denominator: 0,
+    lastRatingTimestamp: null,
+    ratingCount: 0,
+  };
+
+  for (const rating of ratingsRes.rows) {
+    aggregate = nextRatingAggregate(
+      aggregate,
+      Number(rating.overall_score),
+      rating.created_at,
+      halfLifeDaysForRole(target.role),
+    );
+  }
+
+  await db.query(
+    `UPDATE users
+     SET current_score = $1,
+         denominator = $2,
+         last_rating_timestamp = $3,
+         rating_count = $4
+     WHERE id = $5`,
+    [
+      aggregate.currentScore,
+      aggregate.denominator ?? 0,
+      aggregate.lastRatingTimestamp,
+      aggregate.ratingCount ?? 0,
+      targetId,
+    ],
+  );
+
+  return true;
+}
+
+export async function deleteRatingForAdmin(ratingId: string) {
+  return withDb(async (db) => {
+    await db.query("BEGIN");
+    try {
+      const deletedRes = await db.query<{ target_id: string }>(
+        `DELETE FROM ratings WHERE id = $1 RETURNING target_id`,
+        [ratingId],
+      );
+      const deleted = deletedRes.rows[0];
+      if (!deleted) {
+        await db.query("ROLLBACK");
+        return { ok: false as const, error: "Rating not found." };
+      }
+
+      await recalculateTargetRatingAggregate(db, deleted.target_id);
+      await db.query("COMMIT");
+      return { ok: true as const, targetId: deleted.target_id };
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
+export async function deleteTargetRatingsForAdmin(targetId: string) {
+  return withDb(async (db) => {
+    await db.query("BEGIN");
+    try {
+      const targetRes = await db.query<{ id: string; name: string }>(
+        `SELECT id, name
+         FROM users
+         WHERE id = $1 AND role IN ('venue','artist','city')
+         FOR UPDATE`,
+        [targetId],
+      );
+      const target = targetRes.rows[0];
+      if (!target) {
+        await db.query("ROLLBACK");
+        return { ok: false as const, error: "Target not found." };
+      }
+
+      const deletedRes = await db.query<{ count: string }>(
+        `WITH deleted AS (
+           DELETE FROM ratings WHERE target_id = $1 RETURNING id
+         )
+         SELECT COUNT(*)::text AS count FROM deleted`,
+        [targetId],
+      );
+      await db.query(
+        `UPDATE users
+         SET current_score = NULL,
+             denominator = 0,
+             last_rating_timestamp = NULL,
+             rating_count = 0
+         WHERE id = $1`,
+        [targetId],
+      );
+      await db.query("COMMIT");
+      return { ok: true as const, targetId, targetName: target.name, deletedCount: Number(deletedRes.rows[0]?.count ?? 0) };
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
 export async function createManagedUser(input: {
   username?: string;
   name: string;
@@ -790,7 +1061,16 @@ export async function createManagedUser(input: {
   });
 }
 
-export async function updateUserProfile(id: string, input: { name: string; location: string; genre?: string; bio?: string }) {
+export async function updateUserProfile(id: string, input: {
+  name: string;
+  location: string;
+  genre?: string;
+  bio?: string;
+  address?: string;
+  website?: string;
+  instagram?: string;
+  tiktok?: string;
+}) {
   return withDb(async (db) => {
     const name = input.name.trim();
     const location = input.location.trim();
@@ -802,7 +1082,16 @@ export async function updateUserProfile(id: string, input: { name: string; locat
     );
     const existing = JSON.parse(existingRes.rows[0]?.settings_json ?? "{}") as Record<string, unknown>;
     const bio = typeof input.bio === "string" ? input.bio.trim().slice(0, 500) : existing.bio ?? null;
-    const updatedSettings = JSON.stringify({ ...existing, bio });
+    const address = typeof input.address === "string"
+      ? input.address.trim().slice(0, 160) || null
+      : readOptionalString(existing.address);
+    const existingSocialLinks = readPublicSocialLinks(existing);
+    const socialLinks = {
+      website: input.website === undefined ? existingSocialLinks.website : normalizePublicUrl(input.website),
+      instagram: input.instagram === undefined ? existingSocialLinks.instagram : normalizePublicUrl(input.instagram),
+      tiktok: input.tiktok === undefined ? existingSocialLinks.tiktok : normalizePublicUrl(input.tiktok),
+    };
+    const updatedSettings = JSON.stringify({ ...existing, bio, address, socialLinks });
 
     await db.query(
       `UPDATE users SET name = $1, location = $2, genre = $3, settings_json = $4 WHERE id = $5`,

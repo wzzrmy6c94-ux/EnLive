@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Panel } from "@/components/enlive-shell";
 import { PlanManager } from '@/components/PlanManager';
 
 
-type TargetType = "venue" | "artist";
+type TargetType = "venue" | "artist" | "city";
 
 type AdminUserRow = {
   id: string;
@@ -22,35 +22,155 @@ type AdminRatingRow = {
   id: string;
   targetId: string;
   targetType: TargetType;
+  category1: number;
+  category2: number;
+  category3: number;
+  category4: number | null;
   overallScore: number;
   location: string;
+  deviceId: string;
   createdAt: string;
   targetName: string | null;
+  sameDeviceTargetCount: number;
+  sameDeviceTotalCount: number;
+};
+
+type AdminDeleteResponse = {
+  ok?: boolean;
+  error?: string;
+  targetId?: string;
+  targetName?: string;
+  deletedCount?: number;
+};
+
+const CATEGORY_LABELS: Record<TargetType, [string, string, string, string]> = {
+  venue: [
+    "Sound & Technical Experience",
+    "Atmosphere & Ambience",
+    "Staff & Operations",
+    "Amenities & Value",
+  ],
+  artist: [
+    "Performance Quality",
+    "Stage Presence & Engagement",
+    "Set & Musical Experience",
+    "Fan Experience",
+  ],
+  city: ["Category 1", "Category 2", "Category 3", "Category 4"],
 };
 
 export default function AdminDashboardPage() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [ratings, setRatings] = useState<AdminRatingRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ratingsLoading, setRatingsLoading] = useState(true);
+  const [selectedTarget, setSelectedTarget] = useState<AdminUserRow | null>(null);
+  const [deviceFilter, setDeviceFilter] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
+  const loadOverview = useCallback(async () => {
     setLoading(true);
-    fetch("/api/admin/overview", { cache: "no-store" })
-      .then(async (res) => {
-        const data = (await res.json()) as { users?: AdminUserRow[]; ratings?: AdminRatingRow[]; error?: string };
-        if (!res.ok) throw new Error(data.error || "Failed to load admin overview");
-        setUsers(data.users ?? []);
-        setRatings(data.ratings ?? []);
-      })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load admin overview"))
-      .finally(() => setLoading(false));
-  };
+    try {
+      const res = await fetch("/api/admin/overview", { cache: "no-store" });
+      const data = (await res.json()) as { users?: AdminUserRow[]; error?: string };
+      if (!res.ok) throw new Error(data.error || "Failed to load admin overview");
+      const nextUsers = data.users ?? [];
+      setUsers(nextUsers);
+      setSelectedTarget((current) => {
+        if (!current) return current;
+        return nextUsers.find((user) => user.id === current.id) ?? current;
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load admin overview");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadRatings = useCallback(async (targetId?: string | null, deviceId?: string | null) => {
+    setRatingsLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: "75" });
+      if (targetId) params.set("targetId", targetId);
+      if (deviceId) params.set("deviceId", deviceId);
+      const res = await fetch(`/api/admin/ratings?${params.toString()}`, { cache: "no-store" });
+      const data = (await res.json()) as { ratings?: AdminRatingRow[]; error?: string };
+      if (!res.ok) throw new Error(data.error || "Failed to load ratings");
+      setRatings(data.ratings ?? []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load ratings");
+    } finally {
+      setRatingsLoading(false);
+    }
+  }, []);
+
+  const refresh = useCallback(() => {
+    setError(null);
+    void loadOverview();
+    void loadRatings(selectedTarget?.id ?? null, deviceFilter);
+  }, [deviceFilter, loadOverview, loadRatings, selectedTarget?.id]);
 
   useEffect(() => {
-    load();
-  }, []);
+    void loadOverview();
+  }, [loadOverview]);
+
+  useEffect(() => {
+    void loadRatings(selectedTarget?.id ?? null, deviceFilter);
+  }, [deviceFilter, loadRatings, selectedTarget?.id]);
+
+  async function deleteRating(rating: AdminRatingRow) {
+    const confirmed = window.confirm(
+      `Delete this ${rating.targetName ?? rating.targetId} rating from ${formatDateTime(rating.createdAt)}? The profile score will be recalculated from the remaining ratings.`,
+    );
+    if (!confirmed) return;
+
+    setBusyAction(`rating:${rating.id}`);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/ratings", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deleteRating", ratingId: rating.id }),
+      });
+      const data = (await res.json()) as AdminDeleteResponse;
+      if (!res.ok) throw new Error(data.error || "Failed to delete rating");
+      setNotice("Rating deleted and profile score recalculated.");
+      await Promise.all([loadOverview(), loadRatings(selectedTarget?.id ?? null, deviceFilter)]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete rating");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function deleteTargetHistory(target: AdminUserRow) {
+    const confirmed = window.confirm(
+      `Delete all ${target.ratingCount} ratings for ${target.name}? This resets their rating history and current score.`,
+    );
+    if (!confirmed) return;
+
+    setBusyAction(`target:${target.id}`);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/ratings", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deleteTargetHistory", targetId: target.id }),
+      });
+      const data = (await res.json()) as AdminDeleteResponse;
+      if (!res.ok) throw new Error(data.error || "Failed to delete rating history");
+      setNotice(`${data.deletedCount ?? 0} ratings deleted for ${data.targetName ?? target.name}.`);
+      await Promise.all([loadOverview(), loadRatings(selectedTarget?.id ?? null, deviceFilter)]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete rating history");
+    } finally {
+      setBusyAction(null);
+    }
+  }
 
   return (
     <main className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
@@ -59,6 +179,8 @@ export default function AdminDashboardPage() {
         <p className="mt-1 text-sm text-[var(--text-muted)]">
           Server-backed admin operations for venues, artists, and ratings.
         </p>
+        {notice ? <p className="mt-3 text-sm font-medium text-emerald-300">{notice}</p> : null}
+        {error ? <p className="mt-3 text-sm font-medium text-[var(--primary)]">{error}</p> : null}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr] xl:col-span-2">
@@ -83,9 +205,14 @@ export default function AdminDashboardPage() {
           <Panel>
             <h2 className="text-base font-semibold text-[var(--foreground)]">Test data controls</h2>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => adminAction("clearRatings", setError, setNotice, load)} className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-sm text-amber-200 hover:border-amber-300/70">Delete test ratings</button>
-              <button type="button" onClick={() => adminAction("resetDatabase", setError, setNotice, load)} className="rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border-strong)", background: "var(--surface-muted)", color: "var(--primary)" }}>Full reset</button>
+              <button type="button" onClick={() => adminAction("clearRatings", setError, setNotice, refresh)} className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-sm text-amber-200 hover:border-amber-300/70">Delete test ratings</button>
+              <button type="button" onClick={() => adminAction("resetDatabase", setError, setNotice, refresh)} className="rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border-strong)", background: "var(--surface-muted)", color: "var(--primary)" }}>Full reset</button>
             </div>
+          </Panel>
+
+          <Panel>
+            <h2 className="text-base font-semibold text-[var(--foreground)]">Subscription Plans</h2>
+            <PlanManager />
           </Panel>
         </div>
 
@@ -93,20 +220,44 @@ export default function AdminDashboardPage() {
           <Panel className="shadow-[0_18px_60px_var(--shadow)]">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-[var(--foreground)]">All venues & artists</h2>
-              <button type="button" onClick={load} className="rounded-xl border px-3 py-1 text-xs" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>Refresh</button>
+              <button type="button" onClick={refresh} className="rounded-xl border px-3 py-1 text-xs" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>Refresh</button>
             </div>
-            {loading ? <p className="mt-3 text-sm text-[var(--text-muted)]">Loading…</p> : null}
+            {loading ? <p className="mt-3 text-sm text-[var(--text-muted)]">Loading...</p> : null}
             <div className="mt-3 overflow-auto rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
               <table className="min-w-full text-left text-sm">
-                <thead className="text-[var(--text-muted)]" style={{ background: "var(--surface)" }}><tr><th className="px-3 py-2 font-medium">Name</th><th className="px-3 py-2 font-medium">Type</th><th className="px-3 py-2 font-medium">Town</th><th className="px-3 py-2 font-medium">Avg</th><th className="px-3 py-2 font-medium">Ratings</th></tr></thead>
+                <thead className="text-[var(--text-muted)]" style={{ background: "var(--surface)" }}><tr><th className="px-3 py-2 font-medium">Name</th><th className="px-3 py-2 font-medium">Type</th><th className="px-3 py-2 font-medium">Town</th><th className="px-3 py-2 font-medium">Avg</th><th className="px-3 py-2 font-medium">Ratings</th><th className="px-3 py-2 font-medium">Actions</th></tr></thead>
                 <tbody>
                   {users.map((row) => (
-                    <tr key={row.id} className="border-t" style={{ borderColor: "var(--border)" }}>
+                    <tr key={row.id} className={`border-t ${selectedTarget?.id === row.id ? "bg-[var(--surface)]" : ""}`} style={{ borderColor: "var(--border)" }}>
                       <td className="px-3 py-2 text-[var(--foreground)]">{row.name}</td>
                       <td className="px-3 py-2 text-[var(--text-muted)]">{row.role}</td>
                       <td className="px-3 py-2 text-[var(--text-muted)]">{row.location}</td>
                       <td className="px-3 py-2 text-[var(--primary)]">{row.averageScore.toFixed(2)}/100</td>
                       <td className="px-3 py-2 text-[var(--text-muted)]">{row.ratingCount}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedTarget(row);
+                              setDeviceFilter(null);
+                            }}
+                            className="rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:opacity-80"
+                            style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                          >
+                            View ratings
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyAction === `target:${row.id}` || row.ratingCount === 0}
+                            onClick={() => void deleteTargetHistory(row)}
+                            className="rounded-lg border px-2.5 py-1 text-xs font-medium text-amber-200 transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45"
+                            style={{ borderColor: "rgb(252 211 77 / 0.35)", background: "rgb(252 211 77 / 0.08)" }}
+                          >
+                            Delete history
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -115,22 +266,97 @@ export default function AdminDashboardPage() {
           </Panel>
 
           <Panel>
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Subscription Plans</h2>
-            <PlanManager />
-          </Panel>
-
-          <Panel>
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Recent Ratings</h2>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-[var(--foreground)]">Rating moderation</h2>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  {selectedTarget ? (
+                    <FilterPill label="Profile" value={selectedTarget.name} onClear={() => setSelectedTarget(null)} />
+                  ) : (
+                    <span className="rounded-full border px-3 py-1 text-[var(--text-muted)]" style={{ borderColor: "var(--border)" }}>All profiles</span>
+                  )}
+                  {deviceFilter ? (
+                    <FilterPill label="Device" value={deviceFilter} onClear={() => setDeviceFilter(null)} mono />
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedTarget ? (
+                  <button
+                    type="button"
+                    disabled={busyAction === `target:${selectedTarget.id}` || selectedTarget.ratingCount === 0}
+                    onClick={() => void deleteTargetHistory(selectedTarget)}
+                    className="rounded-xl border px-3 py-2 text-xs font-semibold text-amber-200 transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45"
+                    style={{ borderColor: "rgb(252 211 77 / 0.35)", background: "rgb(252 211 77 / 0.08)" }}
+                  >
+                    Delete selected history
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="rounded-xl border px-3 py-2 text-xs font-semibold transition hover:opacity-80"
+                  style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                >
+                  Refresh ratings
+                </button>
+              </div>
+            </div>
+            {ratingsLoading ? <p className="mt-3 text-sm text-[var(--text-muted)]">Loading ratings...</p> : null}
             <div className="mt-3 space-y-2">
               {ratings.length ? ratings.map((rating) => (
-                <div key={rating.id} className="rounded-xl border p-3 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="font-medium text-[var(--foreground)]">{rating.targetName ?? rating.targetId}</div>
-                    <div className="text-xs text-[var(--text-muted)]">{new Date(rating.createdAt).toLocaleString()}</div>
+                <details key={rating.id} className="rounded-xl border p-3 text-sm" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="font-medium text-[var(--foreground)]">{rating.targetName ?? rating.targetId}</div>
+                        <div className="mt-1 text-xs text-[var(--text-muted)]">{rating.targetType} / {rating.location} / {formatScore(rating.overallScore)}</div>
+                      </div>
+                      <div className="text-xs text-[var(--text-muted)]">{formatDateTime(rating.createdAt)}</div>
+                    </div>
+                  </summary>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr]">
+                    <div className="grid gap-2">
+                      {categoryDetails(rating).map((detail) => (
+                        <DetailRow key={detail.label} label={detail.label} value={detail.value} />
+                      ))}
+                    </div>
+                    <div className="grid gap-2">
+                      <DetailRow label="Rating ID" value={rating.id} mono />
+                      <DetailRow label="Target ID" value={rating.targetId} mono />
+                      <DetailRow label="Device ID" value={rating.deviceId} mono />
+                      <DetailRow label="Same device on this profile" value={String(rating.sameDeviceTargetCount)} />
+                      <DetailRow label="Same device total ratings" value={String(rating.sameDeviceTotalCount)} />
+                    </div>
                   </div>
-                  <div className="mt-1 text-[var(--text-muted)]">{rating.targetType} • {rating.location} • overall {rating.overallScore.toFixed(2)}/100</div>
-                </div>
-              )) : <p className="text-sm text-[var(--text-muted)]">No ratings recorded.</p>}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeviceFilter(rating.deviceId)}
+                      className="rounded-xl border px-3 py-2 text-xs font-semibold transition hover:opacity-80"
+                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                    >
+                      Filter device
+                    </button>
+                    <Link
+                      href={`/target/${rating.targetId}`}
+                      className="rounded-xl border px-3 py-2 text-xs font-semibold transition hover:opacity-80"
+                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                    >
+                      Public profile
+                    </Link>
+                    <button
+                      type="button"
+                      disabled={busyAction === `rating:${rating.id}`}
+                      onClick={() => void deleteRating(rating)}
+                      className="rounded-xl border px-3 py-2 text-xs font-semibold text-amber-200 transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45"
+                      style={{ borderColor: "rgb(252 211 77 / 0.35)", background: "rgb(252 211 77 / 0.08)" }}
+                    >
+                      Delete rating
+                    </button>
+                  </div>
+                </details>
+              )) : <p className="text-sm text-[var(--text-muted)]">No ratings found.</p>}
             </div>
           </Panel>
         </div>
@@ -159,4 +385,57 @@ function adminAction(
       reload();
     })
     .catch((err: unknown) => setError(err instanceof Error ? err.message : "Action failed"));
+}
+
+function formatScore(value: number) {
+  return `${value.toFixed(2)}/100`;
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function categoryDetails(rating: AdminRatingRow) {
+  const labels = CATEGORY_LABELS[rating.targetType];
+  return [
+    { label: labels[0], value: formatScore(rating.category1) },
+    { label: labels[1], value: formatScore(rating.category2) },
+    { label: labels[2], value: formatScore(rating.category3) },
+    { label: labels[3], value: rating.category4 == null ? "Not stored" : formatScore(rating.category4) },
+    { label: "Overall", value: formatScore(rating.overallScore) },
+  ];
+}
+
+function FilterPill({
+  label,
+  value,
+  mono,
+  onClear,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  onClear: () => void;
+}) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-1" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
+      <span className="text-[var(--text-muted)]">{label}</span>
+      <span className={`truncate text-[var(--foreground)] ${mono ? "font-mono" : ""}`}>{value}</span>
+      <button type="button" onClick={onClear} className="text-[var(--text-muted)] transition hover:text-[var(--foreground)]" aria-label={`Clear ${label.toLowerCase()} filter`}>
+        x
+      </button>
+    </span>
+  );
+}
+
+function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0 rounded-lg border px-3 py-2" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+      <div className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">{label}</div>
+      <div className={`mt-1 break-words text-sm text-[var(--foreground)] ${mono ? "font-mono text-xs" : ""}`}>
+        {value}
+      </div>
+    </div>
+  );
 }

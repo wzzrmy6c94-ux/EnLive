@@ -13,6 +13,10 @@ const updateSchema = z.object({
   location: z.string().transform(sanitizeText).pipe(z.string().min(1).max(120)),
   genre: z.string().transform(sanitizeText).pipe(z.string().max(80)).optional(),
   bio: z.string().transform(sanitizeText).pipe(z.string().max(500)).optional(),
+  address: z.string().transform(sanitizeText).pipe(z.string().max(160)).optional(),
+  website: z.string().transform(sanitizeText).pipe(z.string().max(240)).optional(),
+  instagram: z.string().transform(sanitizeText).pipe(z.string().max(240)).optional(),
+  tiktok: z.string().transform(sanitizeText).pipe(z.string().max(240)).optional(),
 });
 
 export const GET = withApi(async (request: NextRequest, { requestId }) => {

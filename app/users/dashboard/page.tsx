@@ -26,15 +26,33 @@ type UserData = {
       category2Average: number;
       category3Average: number;
       category4Average: number | null;
+      cityRank: number | null;
     };
     recentRatings?: RatingInfo[];
   } | null;
 };
 
+const RANKING_THRESHOLD = 5;
+
 const CATEGORY_LABELS: Record<string, string[]> = {
   venue: ["Sound & Technical Experience", "Atmosphere & Ambience", "Staff & Operations", "Amenities & Value"],
   artist: ["Performance Quality", "Stage Presence & Engagement", "Set & Musical Experience", "Fan Experience"],
 };
+
+function formatOrdinal(value: number) {
+  const remainder = value % 100;
+  if (remainder >= 11 && remainder <= 13) return `${value}th`;
+  switch (value % 10) {
+    case 1:
+      return `${value}st`;
+    case 2:
+      return `${value}nd`;
+    case 3:
+      return `${value}rd`;
+    default:
+      return `${value}th`;
+  }
+}
 
 export default function UserDashboard() {
   const router = useRouter();
@@ -65,7 +83,8 @@ export default function UserDashboard() {
   const { user, target } = data;
   const stats = target?.stats;
   const catLabels = CATEGORY_LABELS[user.role] ?? [];
-  const qualified = (stats?.totalRatings ?? 0) >= 3;
+  const qualified = (stats?.totalRatings ?? 0) >= RANKING_THRESHOLD;
+  const cityRankLabel = stats?.cityRank ? `${formatOrdinal(stats.cityRank)} in ${user.location}` : "Not ranked yet";
 
   return (
     <EnliveShell title={user.name} subtitle={`${user.role === "venue" ? "Venue" : "Artist / Band"} · ${user.location}`}>
@@ -90,12 +109,13 @@ export default function UserDashboard() {
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Stat label="Overall score" value={`${stats.averageScore.toFixed(2)}/100`} accent />
               <Stat label="Total ratings" value={String(stats.totalRatings)} />
+              <Stat label="City rank" value={cityRankLabel} />
               <Stat label="Location" value={user.location} />
               <Stat label="Threshold" value={qualified ? "Qualified" : "Early data"} />
             </div>
           ) : (
             <p className="mt-4 text-sm text-[var(--text-muted)]">
-              No ratings yet. Share your profile link to start collecting scores.
+              No ratings yet. Generate your QR code below to start collecting scores.
             </p>
           )}
         </Panel>

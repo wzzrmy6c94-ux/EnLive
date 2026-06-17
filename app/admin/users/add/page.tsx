@@ -19,7 +19,6 @@ type FormState = {
   artist: {
     genre: string;
     showcaseEnabled: boolean;
-    socialLinks: boolean;
   };
 };
 
@@ -29,7 +28,7 @@ const initialForm: FormState = {
   role: "venue",
   location: "",
   venue: { capacity: "", bookingOpen: true, wheelchairAccess: false },
-  artist: { genre: "", showcaseEnabled: true, socialLinks: false },
+  artist: { genre: "", showcaseEnabled: true },
 };
 
 export default function AdminAddUserPage() {
@@ -53,7 +52,7 @@ export default function AdminAddUserPage() {
       : {
           genre: form.artist.genre || "Unknown",
           showcaseEnabled: form.artist.showcaseEnabled,
-          socialLinks: form.artist.socialLinks,
+          socialLinks: {},
         };
   }, [form]);
 
@@ -395,25 +394,6 @@ export default function AdminAddUserPage() {
                     }
                   />
                   Showcase enabled
-                </label>
-                <label
-                  className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"
-                  style={{
-                    borderColor: "var(--border)",
-                    background: "var(--surface-elevated)",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.artist.socialLinks}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        artist: { ...p.artist, socialLinks: e.target.checked },
-                      }))
-                    }
-                  />
-                  Social links
                 </label>
               </div>
             </div>

@@ -30,6 +30,7 @@ type TargetDetails = {
     category2Average: number;
     category3Average: number;
     category4Average: number | null;
+    cityRank: number | null;
   };
   recentRatings: Array<{
     id: string;
@@ -52,6 +53,21 @@ const CATEGORY_LABELS: Record<TabType, string[]> = {
     "Audience Turnout",
   ],
 };
+
+function formatOrdinal(value: number) {
+  const remainder = value % 100;
+  if (remainder >= 11 && remainder <= 13) return `${value}th`;
+  switch (value % 10) {
+    case 1:
+      return `${value}st`;
+    case 2:
+      return `${value}nd`;
+    case 3:
+      return `${value}rd`;
+    default:
+      return `${value}th`;
+  }
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -677,6 +693,13 @@ export default function LeaderboardPage() {
                               value={selectedRow.location}
                               variant="muted"
                             />
+                            {selectedTarget?.stats.cityRank ? (
+                              <StatCard
+                                label="City rank"
+                                value={`${formatOrdinal(selectedTarget.stats.cityRank)} in ${selectedRow.location}`}
+                                variant="subtle"
+                              />
+                            ) : null}
                             <StatCard
                               label="Category"
                               value={

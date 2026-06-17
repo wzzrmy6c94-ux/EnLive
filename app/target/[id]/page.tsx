@@ -16,6 +16,12 @@ type Target = {
   location: string;
   genre: string | null;
   bio: string | null;
+  address: string | null;
+  socialLinks: {
+    website: string | null;
+    instagram: string | null;
+    tiktok: string | null;
+  };
   createdAt: string;
   stats: {
     totalRatings: number;
@@ -24,6 +30,7 @@ type Target = {
     category2Average: number;
     category3Average: number;
     category4Average: number | null;
+    cityRank: number | null;
   };
   recentRatings: Array<{
     id: string;
@@ -49,6 +56,33 @@ const GENRES = [
 ];
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
+
+function formatOrdinal(value: number) {
+  const remainder = value % 100;
+  if (remainder >= 11 && remainder <= 13) return `${value}th`;
+  switch (value % 10) {
+    case 1:
+      return `${value}st`;
+    case 2:
+      return `${value}nd`;
+    case 3:
+      return `${value}rd`;
+    default:
+      return `${value}th`;
+  }
+}
+
+function normalizePublicUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withProtocol);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 function CategoryBar({ label, value }: { label: string; value: number }) {
   const pct = Math.min(100, Math.max(0, Math.round(value)));
@@ -95,6 +129,10 @@ export default function TargetProfilePage() {
   const [location, setLocation] = useState("");
   const [genre, setGenre] = useState("");
   const [bio, setBio] = useState("");
+  const [address, setAddress] = useState("");
+  const [website, setWebsite] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [tiktok, setTiktok] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -122,6 +160,10 @@ export default function TargetProfilePage() {
           setLocation(data.target.location);
           setGenre(data.target.genre ?? "");
           setBio(data.target.bio ?? "");
+          setAddress(data.target.address ?? "");
+          setWebsite(data.target.socialLinks.website ?? "");
+          setInstagram(data.target.socialLinks.instagram ?? "");
+          setTiktok(data.target.socialLinks.tiktok ?? "");
         }
       })
       .catch((e: unknown) => {
@@ -158,6 +200,14 @@ export default function TargetProfilePage() {
   const roleLabel = target.role === "venue" ? "Venue" : target.role === "city" ? "City" : "Artist / Band";
   const initials = target.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   const catLabels = CATEGORY_LABELS[target.role];
+  const cityRankLabel = target.role !== "city" && target.stats.cityRank
+    ? `${formatOrdinal(target.stats.cityRank)} in ${target.location}`
+    : null;
+  const socialLinks = [
+    { label: "Website", href: target.socialLinks.website },
+    { label: "Instagram", href: target.socialLinks.instagram },
+    { label: "TikTok", href: target.socialLinks.tiktok },
+  ].filter((link): link is { label: string; href: string } => Boolean(link.href));
 
   const catBars: Array<{ label: string; value: number }> = [
     { label: catLabels[0], value: target.stats.category1Average },
@@ -176,12 +226,33 @@ export default function TargetProfilePage() {
     await fetch("/api/users/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, location, genre: genre || undefined, bio: bio || undefined }),
+      body: JSON.stringify({
+        name,
+        location,
+        genre: genre || undefined,
+        bio: bio || undefined,
+        address: address || undefined,
+        website,
+        instagram,
+        tiktok,
+      }),
     })
       .then(async (res) => {
         const d = (await res.json()) as { ok?: boolean; error?: string };
         if (!res.ok) throw new Error(d.error ?? "Save failed.");
-        setTarget((prev) => prev ? { ...prev, name, location, genre, bio } : prev);
+        setTarget((prev) => prev ? {
+          ...prev,
+          name,
+          location,
+          genre,
+          bio,
+          address: address.trim() || null,
+          socialLinks: {
+            website: normalizePublicUrl(website),
+            instagram: normalizePublicUrl(instagram),
+            tiktok: normalizePublicUrl(tiktok),
+          },
+        } : prev);
         setSaveSuccess(true);
         setEditing(false);
       })
@@ -195,6 +266,10 @@ export default function TargetProfilePage() {
     setLocation(target.location);
     setGenre(target.genre ?? "");
     setBio(target.bio ?? "");
+    setAddress(target.address ?? "");
+    setWebsite(target.socialLinks.website ?? "");
+    setInstagram(target.socialLinks.instagram ?? "");
+    setTiktok(target.socialLinks.tiktok ?? "");
     setSaveError(null);
     setSaveSuccess(false);
     setEditing(false);
@@ -292,12 +367,51 @@ export default function TargetProfilePage() {
               <p className="text-sm font-medium" style={{ color: "var(--primary)" }}>
                 {roleLabel}{target.genre ? ` · ${target.genre}` : ""}
               </p>
+              {cityRankLabel ? (
+                <div>
+                  <span
+                    className="inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold"
+                    style={{
+                      borderColor: "var(--border)",
+                      background: "var(--surface-muted)",
+                      color: "var(--foreground)",
+                    }}
+                  >
+                    City rank · {cityRankLabel}
+                  </span>
+                </div>
+              ) : null}
               <div className="flex items-center gap-1 text-xs" style={{ color: "var(--text-muted)" }}>
                 <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0 fill-current" aria-hidden="true">
                   <path d="M8 0a5.53 5.53 0 0 0-5.5 5.5c0 3.036 5.5 10.5 5.5 10.5S13.5 8.536 13.5 5.5A5.53 5.53 0 0 0 8 0Zm0 8a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z" />
                 </svg>
                 {target.location}
               </div>
+              {target.role === "venue" && target.address ? (
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  {target.address}
+                </p>
+              ) : null}
+              {socialLinks.length ? (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {socialLinks.map((link) => (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-full border px-3 py-1 text-xs font-medium transition hover:opacity-80"
+                      style={{
+                        borderColor: "var(--border)",
+                        background: "var(--surface-muted)",
+                        color: "var(--foreground)",
+                      }}
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
               {target.bio ? (
                 <p className="pt-1 text-sm italic leading-relaxed" style={{ color: "var(--text-muted)" }}>
                   {target.bio}
@@ -321,7 +435,7 @@ export default function TargetProfilePage() {
             </h2>
             {target.stats.totalRatings === 0 ? (
               <p className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>
-                No ratings yet. Be the first to rate!
+                No ratings yet.
               </p>
             ) : (
               <>
@@ -409,6 +523,21 @@ export default function TargetProfilePage() {
                 />
               </Field>
 
+              {target.role === "venue" && (
+                <Field label="Street address" htmlFor="ep-address">
+                  <input
+                    id="ep-address"
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    maxLength={160}
+                    placeholder="Optional public address"
+                    className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-[var(--primary)]"
+                    style={{ borderColor: "var(--border)", background: "var(--surface-elevated)", color: "var(--foreground)" }}
+                  />
+                </Field>
+              )}
+
               {target.role === "artist" && (
                 <Field label="Genre" htmlFor="ep-genre">
                   <select
@@ -437,6 +566,48 @@ export default function TargetProfilePage() {
                 />
                 <p className="mt-1 text-right text-xs" style={{ color: "var(--text-muted)" }}>{bio.length}/500</p>
               </Field>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="Website" htmlFor="ep-website">
+                  <input
+                    id="ep-website"
+                    type="text"
+                    inputMode="url"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    maxLength={240}
+                    placeholder="https://..."
+                    className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-[var(--primary)]"
+                    style={{ borderColor: "var(--border)", background: "var(--surface-elevated)", color: "var(--foreground)" }}
+                  />
+                </Field>
+                <Field label="Instagram" htmlFor="ep-instagram">
+                  <input
+                    id="ep-instagram"
+                    type="text"
+                    inputMode="url"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    maxLength={240}
+                    placeholder="https://..."
+                    className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-[var(--primary)]"
+                    style={{ borderColor: "var(--border)", background: "var(--surface-elevated)", color: "var(--foreground)" }}
+                  />
+                </Field>
+                <Field label="TikTok" htmlFor="ep-tiktok">
+                  <input
+                    id="ep-tiktok"
+                    type="text"
+                    inputMode="url"
+                    value={tiktok}
+                    onChange={(e) => setTiktok(e.target.value)}
+                    maxLength={240}
+                    placeholder="https://..."
+                    className="w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-[var(--primary)]"
+                    style={{ borderColor: "var(--border)", background: "var(--surface-elevated)", color: "var(--foreground)" }}
+                  />
+                </Field>
+              </div>
 
               <div className="flex items-center gap-3 pt-1">
                 <button
