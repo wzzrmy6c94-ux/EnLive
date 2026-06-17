@@ -261,7 +261,8 @@ cat > "$DEPLOY_SCRIPT" <<'DEPLOYSCRIPT'
 set -e
 echo "🚀 Updating EnLive..."
 git pull
-npm install
+npm ci --prefer-offline
+npm run db:migrate
 npm run build
 pm2 reload enlive
 echo "✅ Deployment complete!"

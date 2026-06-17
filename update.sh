@@ -47,12 +47,17 @@ info "Installing dependencies..."
 npm ci --prefer-offline 2>&1 | tail -5
 success "Dependencies installed."
 
-# ─── 4. Build ─────────────────────────────────
+# ─── 4. Apply database migrations ─────────────
+info "Running database migrations..."
+npm run db:migrate
+success "Migrations applied."
+
+# ─── 5. Build ─────────────────────────────────
 info "Building Next.js app..."
 NODE_ENV=production npm run build
 success "Build complete."
 
-# ─── 5. Restart PM2 ───────────────────────────
+# ─── 6. Restart PM2 ───────────────────────────
 info "Restarting PM2 process 'enlive'..."
 pm2 reload enlive
 success "PM2 reloaded."
