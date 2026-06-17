@@ -136,7 +136,7 @@ export default function AdminUsersPage() {
                                 <div>
                                   <div className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">Admin shortcuts</div>
                                   <p className="mt-2 text-sm text-[var(--text-muted)]">
-                                    Open the public profile or rating form for this account.
+                                    Open the public profile for this account.
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
@@ -146,13 +146,6 @@ export default function AdminUsersPage() {
                                     style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
                                   >
                                     Public profile
-                                  </Link>
-                                  <Link
-                                    href={`/rate/${row.id}`}
-                                    className="rounded-xl px-3 py-2 text-xs font-semibold transition hover:opacity-90"
-                                    style={{ background: "var(--primary)", color: "var(--button-text)" }}
-                                  >
-                                    Rating form
                                   </Link>
                                 </div>
                               </div>

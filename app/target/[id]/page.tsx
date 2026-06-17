@@ -340,27 +340,16 @@ export default function TargetProfilePage() {
             )}
           </Panel>
 
-          {/* Rate + Share */}
+          {/* Share */}
           <Panel className="flex flex-col gap-4">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
-                Submit a Rating
+                Share Profile
               </h2>
               <p className="mt-2 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                Ratings are anonymous and help build an accurate picture of{" "}
-                {target.role === "venue" ? "this venue" : target.role === "city" ? "this city's music scene" : "this artist"}.
+                Share this public profile without opening the rating flow.
               </p>
             </div>
-            <Link
-              href={`/rate/${target.id}`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
-              style={{ background: "var(--primary)", color: "var(--button-text)" }}
-            >
-              <svg viewBox="0 0 16 16" className="h-4 w-4 fill-current" aria-hidden="true">
-                <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z" />
-              </svg>
-              Rate {target.role === "venue" ? "this venue" : target.role === "city" ? "this city" : "this artist"}
-            </Link>
             <button
               type="button"
               onClick={() => {

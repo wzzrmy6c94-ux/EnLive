@@ -122,7 +122,6 @@ export default function UserDashboard() {
                   </h2>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <QuickLink href="/" label="Leaderboard" />
-                    <QuickLink href={`/rate/${user.id}`} label="Your rating page" />
                   </div>
                 </Panel>
 

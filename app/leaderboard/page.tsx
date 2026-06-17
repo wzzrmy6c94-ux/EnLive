@@ -53,89 +53,6 @@ const CATEGORY_LABELS: Record<TabType, string[]> = {
   ],
 };
 
-// ─── Rate Modal ───────────────────────────────────────────────────────────────
-
-function RateModal({
-  targetId,
-  targetName,
-  onClose,
-}: {
-  targetId: string;
-  targetName: string;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Rate ${targetName}`}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="w-full max-w-sm rounded-2xl border p-6 shadow-2xl"
-        style={{
-          background: "var(--surface-elevated)",
-          borderColor: "var(--border-strong)",
-        }}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-[var(--text-strong)]">
-            Rate <span className="text-[var(--primary)]">{targetName}</span>
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-[var(--text-muted)] transition hover:text-[var(--foreground)]"
-            aria-label="Close modal"
-          >
-            ✕
-          </button>
-        </div>
-        <p className="mb-5 text-sm text-[var(--text-muted)]">
-          You'll be taken to the rating page. Your progress on this leaderboard
-          won't be lost.
-        </p>
-        <div className="flex gap-3">
-          <Link
-            href={`/rate/${targetId}`}
-            className="flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition hover:opacity-90"
-            style={{
-              background: "var(--primary)",
-              color: "var(--button-text)",
-            }}
-          >
-            Continue to Rating
-          </Link>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border px-4 py-2.5 text-sm transition hover:border-[var(--border-strong)]"
-            style={{
-              borderColor: "var(--border)",
-              background: "var(--surface-muted)",
-              color: "var(--text-muted)",
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 import { EqualizerBackground } from "@/components/equalizer-background";
@@ -153,7 +70,6 @@ export default function LeaderboardPage() {
     null,
   );
   const [loadingTarget, setLoadingTarget] = useState(false);
-  const [showRateModal, setShowRateModal] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "profile">("list");
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -291,14 +207,6 @@ export default function LeaderboardPage() {
           animation: pulseRow 2s infinite ease-in-out;
         }
       `}</style>
-
-      {showRateModal && selectedRow && (
-        <RateModal
-          targetId={selectedRow.id}
-          targetName={selectedRow.name}
-          onClose={() => setShowRateModal(false)}
-        />
-      )}
 
       <div style={{ position: "relative" }}>
         <EqualizerBackground />
@@ -756,17 +664,6 @@ export default function LeaderboardPage() {
                             >
                               Performance
                             </h3>
-                            <button
-                              type="button"
-                              onClick={() => setShowRateModal(true)}
-                              className="rounded-full px-4 py-2 text-xs font-semibold transition hover:opacity-90"
-                              style={{
-                                background: "var(--primary)",
-                                color: "var(--button-text)",
-                              }}
-                            >
-                              Rate Now
-                            </button>
                           </div>
                           <div className="mt-4 grid gap-3 sm:grid-cols-2">
                             <StatCard
