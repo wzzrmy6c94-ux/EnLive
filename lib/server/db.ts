@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { hashPassword, verifyPassword } from "@/lib/server/auth";
 
@@ -7,8 +8,12 @@ export type TargetType = "venue" | "artist" | "city";
 type UserRow = {
   id: string;
   enlive_uid?: string;
+  username: string;
   name: string;
-  email: string;
+  email: string | null;
+  email_verified_at?: string | null;
+  email_verification_token_hash?: string | null;
+  email_verification_expires_at?: string | null;
   password_hash: string;
   role: Role;
   location: string;
@@ -48,6 +53,47 @@ function mean(values: number[]) {
   return Math.round((values.reduce((sum, n) => sum + n, 0) / values.length) * 100) / 100;
 }
 
+function normalizeUsername(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function isValidUsername(value: string) {
+  return /^[a-z0-9][a-z0-9_-]{2,29}$/.test(value);
+}
+
+function usernameBase(name: string, email: string, role: TargetType) {
+  const source = name || email.split("@")[0] || role;
+  const base = source
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^[_-]+|[_-]+$/g, "")
+    .slice(0, 24);
+  return base.length >= 3 ? base : role;
+}
+
+async function nextAvailableUsername(db: PoolClient, base: string) {
+  const safeBase = isValidUsername(base) ? base : "enlive_user";
+  const res = await db.query<{ username: string }>(
+    `SELECT username FROM users WHERE lower(username) = lower($1) OR lower(username) LIKE lower($2)`,
+    [safeBase, `${safeBase}-%`],
+  );
+  const taken = new Set(res.rows.map((row) => row.username.toLowerCase()));
+  if (!taken.has(safeBase)) return safeBase;
+  for (let suffix = 2; suffix < 10_000; suffix += 1) {
+    const candidate = `${safeBase.slice(0, 29 - String(suffix).length)}-${suffix}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${safeBase.slice(0, 20)}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+function createEmailVerificationToken() {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
+function hashEmailVerificationToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
 function defaultUserSettings(role: TargetType) {
   return role === "artist"
     ? { genre: "Unknown", showcaseEnabled: true, socialLinks: false }
@@ -85,7 +131,7 @@ function getPool() {
 
 function seedUsers(): UserRow[] {
   return [
-    { id: "admin-enlive", enlive_uid: "admin-enlive", name: "Enlive Admin", email: "admin@enlive.local", password_hash: hashPassword("secret123"), role: "admin", location: "Chorley", genre: "Admin", settings_json: JSON.stringify({}), created_at: "2026-02-20T18:00:00.000Z" },
+    { id: "admin-enlive", enlive_uid: "admin-enlive", username: "admin", name: "Enlive Admin", email: "admin@enlive.local", email_verified_at: "2026-02-20T18:00:00.000Z", password_hash: hashPassword("secret123"), role: "admin", location: "Chorley", genre: "Admin", settings_json: JSON.stringify({}), created_at: "2026-02-20T18:00:00.000Z" },
   ];
 }
 
@@ -118,13 +164,15 @@ async function ensureInitialized() {
       if (Number(countRes.rows[0]?.count ?? 0) === 0) {
         for (const u of seedUsers()) {
           await client.query(
-            `INSERT INTO users (id, enlive_uid, name, email, password_hash, role, location, genre, country, settings_json, created_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            `INSERT INTO users (id, enlive_uid, username, name, email, email_verified_at, password_hash, role, location, genre, country, settings_json, created_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
             [
               u.id,
               u.enlive_uid ?? u.id,
+              u.username,
               u.name,
               u.email,
+              u.email_verified_at ?? null,
               u.password_hash,
               u.role,
               u.location,
@@ -352,39 +400,126 @@ export async function insertRating(input: {
   });
 }
 
-export async function authenticateUser(email: string, password: string) {
+export async function authenticateUser(username: string, password: string) {
   return withDb(async (db) => {
     const res = await db.query<UserRow>(
-      `SELECT id, enlive_uid, name, email, password_hash, role, location, created_at FROM users WHERE lower(email) = lower($1) LIMIT 1`,
-      [email.trim()],
+      `SELECT id, enlive_uid, username, name, email, email_verified_at, password_hash, role, location, created_at, square_subscription_id
+       FROM users
+       WHERE lower(username) = lower($1)
+       LIMIT 1`,
+      [normalizeUsername(username)],
     );
     const user = res.rows[0];
-    if (!user) return null;
-    if (!verifyPassword(password, user.password_hash)) return null;
+    if (!user) return { ok: false as const, reason: "invalid" as const };
+    if (!verifyPassword(password, user.password_hash)) {
+      return { ok: false as const, reason: "invalid" as const };
+    }
+    if (!user.email_verified_at) {
+      return { ok: false as const, reason: "unverified" as const, email: user.email };
+    }
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      location: user.location,
-      createdAt: new Date(user.created_at).toISOString(),
-      square_subscription_id: user.square_subscription_id ?? null,
+      ok: true as const,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        location: user.location,
+        createdAt: new Date(user.created_at).toISOString(),
+        square_subscription_id: user.square_subscription_id ?? null,
+      },
     };
+  });
+}
+
+export async function startLoginEmailVerification(input: {
+  username: string;
+  password: string;
+  email: string;
+}) {
+  return withDb(async (db) => {
+    const username = normalizeUsername(input.username);
+    const email = input.email.trim().toLowerCase();
+    const res = await db.query<UserRow>(
+      `SELECT id, username, email, email_verified_at, password_hash, role
+       FROM users
+       WHERE lower(username) = lower($1)
+       LIMIT 1`,
+      [username],
+    );
+    const user = res.rows[0];
+    if (!user || !verifyPassword(input.password, user.password_hash)) {
+      return { ok: false as const, error: "Invalid username/password." };
+    }
+    if (user.email_verified_at) {
+      return { ok: false as const, error: "This account is already verified." };
+    }
+
+    const emailExists = await db.query<{ id: string }>(
+      `SELECT id FROM users WHERE lower(email) = lower($1) AND id <> $2 LIMIT 1`,
+      [email, user.id],
+    );
+    if (emailExists.rows[0]) {
+      return { ok: false as const, error: "Email already exists." };
+    }
+
+    const verificationToken = createEmailVerificationToken();
+    const verificationTokenHash = hashEmailVerificationToken(verificationToken);
+    const verificationExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString();
+
+    await db.query(
+      `UPDATE users
+       SET email = $1,
+           email_verified_at = NULL,
+           email_verification_token_hash = $2,
+           email_verification_expires_at = $3
+       WHERE id = $4`,
+      [email, verificationTokenHash, verificationExpiresAt, user.id],
+    );
+
+    return { ok: true as const, username: user.username, verificationToken };
+  });
+}
+
+export async function verifyEmailToken(token: string) {
+  const tokenHash = hashEmailVerificationToken(token.trim());
+  return withDb(async (db) => {
+    const res = await db.query<{
+      id: string;
+      username: string;
+      role: Role;
+    }>(
+      `UPDATE users
+       SET email_verified_at = now(),
+           email_verification_token_hash = NULL,
+           email_verification_expires_at = NULL
+       WHERE email_verification_token_hash = $1
+         AND email_verification_expires_at > now()
+         AND email_verified_at IS NULL
+       RETURNING id, username, role`,
+      [tokenHash],
+    );
+    const user = res.rows[0];
+    if (!user) return { ok: false as const, error: "Verification link is invalid or expired." };
+    return { ok: true as const, user };
   });
 }
 
 export async function getUserById(id: string) {
   return withDb(async (db) => {
     const res = await db.query<Omit<UserRow, "password_hash">>(
-      `SELECT id, enlive_uid, name, email, role, location, created_at, square_subscription_id FROM users WHERE id = $1 LIMIT 1`,
+      `SELECT id, enlive_uid, username, name, email, email_verified_at, role, location, created_at, square_subscription_id FROM users WHERE id = $1 LIMIT 1`,
       [id],
     );
     const user = res.rows[0];
     if (!user) return null;
     return {
       id: user.id,
+      username: user.username,
       name: user.name,
       email: user.email,
+      emailVerified: Boolean(user.email_verified_at),
       role: user.role,
       location: user.location,
       createdAt: new Date(user.created_at).toISOString(),
@@ -461,21 +596,32 @@ export async function listRecentRatingsForAdmin(limit = 20) {
 }
 
 export async function createManagedUser(input: {
+  username?: string;
   name: string;
-  email: string;
+  email?: string;
   role: TargetType;
   location?: string;
   enliveUid?: string;
   password?: string;
   genre?: string;
   settings?: Record<string, unknown>;
+  emailVerified?: boolean;
 }) {
   return withDb(async (db) => {
     const name = input.name.trim();
-    const email = input.email.trim().toLowerCase();
+    const email = input.email?.trim().toLowerCase() || null;
     const location = input.location?.trim() ?? "";
+    let username = input.username
+      ? normalizeUsername(input.username)
+      : await nextAvailableUsername(db, usernameBase(name, email ?? "", input.role));
     const requestedUid = input.enliveUid?.trim().toUpperCase();
-    if (!name || !email) return { ok: false as const, error: "Name and email are required." };
+    if (!name) return { ok: false as const, error: "Name is required." };
+    if (!isValidUsername(username)) {
+      return {
+        ok: false as const,
+        error: "Username must be 3-30 characters and use only letters, numbers, underscores, or hyphens.",
+      };
+    }
     if (input.role !== "artist" && !location) return { ok: false as const, error: "Town is required for venues." };
     let enliveUid = requestedUid;
     if (!enliveUid) {
@@ -492,8 +638,12 @@ export async function createManagedUser(input: {
       };
     }
 
-    const exists = await db.query<{ id: string }>(`SELECT id FROM users WHERE lower(email) = lower($1)`, [email]);
-    if (exists.rows[0]) return { ok: false as const, error: "Email already exists." };
+    if (email) {
+      const exists = await db.query<{ id: string }>(`SELECT id FROM users WHERE lower(email) = lower($1)`, [email]);
+      if (exists.rows[0]) return { ok: false as const, error: "Email already exists." };
+    }
+    const usernameExists = await db.query<{ id: string }>(`SELECT id FROM users WHERE lower(username) = lower($1)`, [username]);
+    if (usernameExists.rows[0]) return { ok: false as const, error: "Username already exists." };
     const uidExists = await db.query<{ id: string }>(`SELECT id FROM users WHERE lower(enlive_uid) = lower($1)`, [enliveUid]);
     if (uidExists.rows[0]) return { ok: false as const, error: "EnLive Unique ID already exists." };
 
@@ -503,13 +653,43 @@ export async function createManagedUser(input: {
     const passwordHash = hashPassword(password);
     const genre = input.genre?.trim() || (input.role === 'artist' ? 'Unknown' : 'Live Music Venue');
     const settings = input.settings ?? defaultUserSettings(input.role);
+    const emailVerifiedAt = input.emailVerified && email ? createdAt : null;
+    const verificationToken = email && !emailVerifiedAt ? createEmailVerificationToken() : null;
+    const verificationTokenHash = verificationToken ? hashEmailVerificationToken(verificationToken) : null;
+    const verificationExpiresAt = verificationToken
+      ? new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString()
+      : null;
 
     await db.query(
-      `INSERT INTO users (id,enlive_uid,name,email,password_hash,role,location,genre,settings_json,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [id, enliveUid, name, email, passwordHash, input.role, location, genre, JSON.stringify(settings), createdAt],
+      `INSERT INTO users (
+        id,enlive_uid,username,name,email,email_verified_at,email_verification_token_hash,
+        email_verification_expires_at,password_hash,role,location,genre,settings_json,created_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+      [
+        id,
+        enliveUid,
+        username,
+        name,
+        email,
+        emailVerifiedAt,
+        verificationTokenHash,
+        verificationExpiresAt,
+        passwordHash,
+        input.role,
+        location,
+        genre,
+        JSON.stringify(settings),
+        createdAt,
+      ],
     );
 
-    return { ok: true as const, user: { id, enliveUid, name, email, role: input.role, location, createdAt }, password, settings };
+    return {
+      ok: true as const,
+      user: { id, enliveUid, username, name, email, role: input.role, location, createdAt, emailVerified: Boolean(emailVerifiedAt) },
+      password,
+      settings,
+      verificationToken,
+    };
   });
 }
 
@@ -549,12 +729,14 @@ export async function resetDatabaseToSeed() {
       await db.query(`DELETE FROM users`);
       for (const u of seedUsers()) {
         await db.query(
-          `INSERT INTO users (id,enlive_uid,name,email,password_hash,role,location,genre,country,settings_json,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          `INSERT INTO users (id,enlive_uid,username,name,email,email_verified_at,password_hash,role,location,genre,country,settings_json,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
           [
             u.id,
             u.enlive_uid ?? u.id,
+            u.username,
             u.name,
             u.email,
+            u.email_verified_at ?? null,
             u.password_hash,
             u.role,
             u.location,

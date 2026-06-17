@@ -13,6 +13,7 @@ if (!process.env.DISABLE_RECAPTCHA) {
 }
 
 const registerSchema = z.object({
+  username: z.string().transform(sanitizeText).pipe(z.string().min(3).max(30)),
   name: z.string().transform(sanitizeText).pipe(z.string().min(1).max(120)),
   email: z.string().transform(sanitizeEmail).pipe(z.string().email().max(320)),
   password: z.string().transform(sanitizeText).pipe(z.string().min(6).max(200)),
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
         requestId,
       );
     }
-    const { name, email, password, role, location, genre, recaptchaToken } = parsed.data;
+    const { username, name, email, password, role, location, genre, recaptchaToken } = parsed.data;
 
     if (role === "venue" && !location) {
       logWarn("auth.register.bad_request", { requestId, role });
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await createManagedUser({ name, email, role, location, password, genre });
+    const result = await createManagedUser({ username, name, email, role, location, password, genre });
     if (!result.ok) {
       logWarn("auth.register.failed", { requestId, reason: result.error });
       return withRequestId(
@@ -109,8 +110,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    const verificationUrl = result.verificationToken
+      ? `${appUrl.replace(/\/$/, "")}/users/verify-email?token=${encodeURIComponent(result.verificationToken)}`
+      : null;
+
     logInfo("auth.register.success", { requestId, userId: result.user.id, role: result.user.role });
-    return withRequestId(NextResponse.json({ ok: true }, { status: 201 }), requestId);
+    return withRequestId(
+      NextResponse.json({ ok: true, username: result.user.username, verificationUrl }, { status: 201 }),
+      requestId,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logWarn("auth.register.error", { requestId, error: message });

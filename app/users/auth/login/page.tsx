@@ -18,9 +18,13 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const registered = params.get("registered") === "1";
+  const verified = params.get("verified") === "1";
 
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [emailRequired, setEmailRequired] = useState(false);
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,9 +62,47 @@ function LoginForm() {
               color: "var(--foreground)",
             }}
           >
-            Account created — sign in below.
+            Account created. Verify your email, then sign in below.
           </div>
         )}
+
+        {verified && (
+          <div
+            className="mb-5 rounded-xl border px-4 py-3 text-sm"
+            style={{
+              borderColor: "var(--border)",
+              background:
+                "color-mix(in srgb, var(--primary) 12%, var(--surface))",
+              color: "var(--foreground)",
+            }}
+          >
+            Email verified. Sign in with your username.
+          </div>
+        )}
+
+        {verificationUrl ? (
+          <div
+            className="mb-5 rounded-xl border px-4 py-3 text-sm"
+            style={{
+              borderColor: "var(--border)",
+              background:
+                "color-mix(in srgb, var(--primary) 12%, var(--surface))",
+              color: "var(--foreground)",
+            }}
+          >
+            <p className="font-semibold">Verification email ready.</p>
+            <p className="mt-1 text-[var(--text-muted)]">
+              MVP mode: use this link to verify the account.
+            </p>
+            <Link
+              href={verificationUrl}
+              className="mt-3 inline-flex rounded-xl px-4 py-2 text-xs font-semibold transition hover:opacity-90"
+              style={{ background: "var(--primary)", color: "var(--button-text)" }}
+            >
+              Verify email
+            </Link>
+          </div>
+        ) : null}
 
         <form
           className="space-y-4"
@@ -71,15 +113,33 @@ function LoginForm() {
             void fetch("/api/auth/login", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, password }),
+              body: JSON.stringify({
+                username,
+                password,
+                email: emailRequired ? verificationEmail : undefined,
+              }),
             })
               .then(async (res) => {
                 const data = (await res.json()) as {
                   error?: string;
                   user?: { role: string };
+                  emailRequired?: boolean;
+                  verificationUrl?: string;
                 };
-                if (!res.ok || !data.user)
+                if (data.verificationUrl) {
+                  setVerificationUrl(data.verificationUrl);
+                  setEmailRequired(false);
+                  return;
+                }
+                if (!res.ok) {
+                  if (data.emailRequired) {
+                    setEmailRequired(true);
+                    setError(null);
+                    return;
+                  }
                   throw new Error(data.error || "Login failed.");
+                }
+                if (!data.user) throw new Error(data.error || "Login failed.");
                 if (data.user.role === "admin") {
                   router.push("/admin/dashboard");
                 } else {
@@ -92,13 +152,13 @@ function LoginForm() {
               .finally(() => setSubmitting(false));
           }}
         >
-          <label className="block text-sm" htmlFor="email">
-            <div className="mb-1.5 text-[var(--text-muted)]">Email</div>
+          <label className="block text-sm" htmlFor="username">
+            <div className="mb-1.5 text-[var(--text-muted)]">Username</div>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
               className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-[var(--primary)]"
               style={{
@@ -108,6 +168,27 @@ function LoginForm() {
               }}
             />
           </label>
+          {emailRequired ? (
+            <label className="block text-sm" htmlFor="verification-email">
+              <div className="mb-1.5 text-[var(--text-muted)]">Email for verification</div>
+              <input
+                id="verification-email"
+                type="email"
+                value={verificationEmail}
+                onChange={(e) => setVerificationEmail(e.target.value)}
+                required
+                className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-[var(--primary)]"
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-elevated)",
+                  color: "var(--foreground)",
+                }}
+              />
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
+                This email will be used for account verification and recovery.
+              </p>
+            </label>
+          ) : null}
           <label className="block text-sm" htmlFor="password">
             <div className="mb-1.5 text-[var(--text-muted)]">Password</div>
             <input
@@ -136,7 +217,7 @@ function LoginForm() {
               color: "var(--button-text)",
             }}
           >
-            {submitting ? "Signing in…" : "Sign in"}
+            {submitting ? "Working…" : emailRequired ? "Send verification link" : "Sign in"}
           </button>
         </form>
 

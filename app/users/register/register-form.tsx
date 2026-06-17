@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import {
   GoogleReCaptchaProvider,
@@ -134,9 +133,9 @@ export default function RegisterForm({
 }
 
 function RegisterFormInner() {
-  const router = useRouter();
   const { executeRecaptcha } = useGoogleReCaptcha();
   const [role, setRole] = useState<"venue" | "artist">("venue");
+  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [email, setEmail] = useState("");
@@ -146,6 +145,8 @@ function RegisterFormInner() {
   const [termsOpen, setTermsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
+  const [registeredUsername, setRegisteredUsername] = useState<string | null>(null);
 
   const canSubmit = useMemo(
     () => acceptedTerms && !submitting,
@@ -176,6 +177,38 @@ function RegisterFormInner() {
           Create your EnLive account
         </h1>
 
+        {verificationUrl ? (
+          <div
+            className="mb-4 rounded-2xl border p-4 text-sm"
+            style={{
+              borderColor: "var(--border)",
+              background: "color-mix(in srgb, var(--primary) 12%, var(--surface))",
+              color: "var(--foreground)",
+            }}
+          >
+            <p className="font-semibold">Account created for {registeredUsername}.</p>
+            <p className="mt-1 text-[var(--text-muted)]">
+              Verify the email address before signing in.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                href={verificationUrl}
+                className="rounded-xl px-4 py-2 text-xs font-semibold transition hover:opacity-90"
+                style={{ background: "var(--primary)", color: "var(--button-text)" }}
+              >
+                Verify email
+              </Link>
+              <Link
+                href="/users/auth/login"
+                className="rounded-xl border px-4 py-2 text-xs font-semibold transition hover:opacity-80"
+                style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+              >
+                Sign in
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
         <form
           className="grid gap-4"
           onSubmit={async (e) => {
@@ -196,6 +229,7 @@ function RegisterFormInner() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                  username,
                   name,
                   email,
                   password,
@@ -207,11 +241,14 @@ function RegisterFormInner() {
               });
               const data = (await res.json()) as {
                 ok?: boolean;
+                username?: string;
+                verificationUrl?: string | null;
                 error?: string;
               };
               if (!res.ok)
                 throw new Error(data.error || "Registration failed.");
-              router.push("/users/auth/login?registered=1");
+              setRegisteredUsername(data.username ?? username);
+              setVerificationUrl(data.verificationUrl ?? null);
             } catch (err: unknown) {
               setError(
                 err instanceof Error ? err.message : "Registration failed.",
@@ -307,6 +344,26 @@ function RegisterFormInner() {
           </fieldset>
 
           <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Username" htmlFor="username">
+              <input
+                id="username"
+                type="text"
+                placeholder="yourname"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                minLength={3}
+                maxLength={30}
+                pattern="[A-Za-z0-9_-]+"
+                className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-[var(--primary)]"
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-elevated)",
+                  color: "var(--foreground)",
+                }}
+              />
+            </Field>
+
             <Field
               label={role === "venue" ? "Name" : "Stage Name"}
               htmlFor="name"

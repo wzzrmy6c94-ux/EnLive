@@ -10,7 +10,10 @@ export const runtime = "nodejs";
 
 const adminCreateUserSchema = z.object({
   name: z.string().transform(sanitizeText).pipe(z.string().min(1).max(120)),
-  email: z.string().transform(sanitizeEmail).pipe(z.string().email().max(320)),
+  email: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().transform(sanitizeEmail).pipe(z.string().email().max(320)).optional(),
+  ),
   role: z.enum(["venue", "artist"]),
   location: z.string().transform(sanitizeText).pipe(z.string().min(1).max(120)),
   settings: z.record(z.string(), z.unknown()).optional(),
@@ -38,6 +41,7 @@ export async function POST(request: NextRequest) {
     role: payload.role,
     location: payload.location,
     settings: payload.settings,
+    emailVerified: Boolean(payload.email),
   });
   if (!result.ok) {
     logWarn("admin.users.create_failed", { requestId, adminUserId: session.userId, reason: result.error });

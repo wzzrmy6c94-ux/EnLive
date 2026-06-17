@@ -6,7 +6,7 @@ import { EqualizerBackground } from "@/components/equalizer-background";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +54,7 @@ export default function LoginPage() {
             void fetch("/api/auth/login", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, password }),
+              body: JSON.stringify({ username, password }),
             })
               .then(async (res) => {
                 const contentType = res.headers.get("content-type") || "";
@@ -82,11 +82,11 @@ export default function LoginPage() {
           }}
         >
           <label className="block text-sm">
-            <div className="mb-2 text-[var(--text-muted)]">Email</div>
+            <div className="mb-2 text-[var(--text-muted)]">Username</div>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full rounded-xl border px-3 py-2 outline-none transition focus:ring-2 focus:ring-[var(--primary)]"
               style={{
                 borderColor: "var(--border)",

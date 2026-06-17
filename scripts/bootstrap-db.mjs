@@ -121,9 +121,13 @@ try {
 
   if (userCount === 0) {
     for (const row of seedUsers) {
+      const [id, name, email, passwordHash, role, location, createdAt] = row;
+      const username = id === 'admin-enlive' ? 'admin' : id.replace(/[^a-zA-Z0-9_-]+/g, '_').toLowerCase();
       await client.query(
-        'INSERT INTO users (id, name, email, password_hash, role, location, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-        row,
+        `INSERT INTO users (
+          id, username, name, email, email_verified_at, password_hash, role, location, created_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [id, username, name, email, createdAt, passwordHash, role, location, createdAt],
       );
     }
     for (const row of seedRatings) {

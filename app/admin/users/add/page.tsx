@@ -37,6 +37,11 @@ export default function AdminAddUserPage() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [createdAccount, setCreatedAccount] = useState<{
+    username: string;
+    password: string;
+    name: string;
+  } | null>(null);
 
   const settingsPreview = useMemo(() => {
     return form.role === "venue"
@@ -71,13 +76,14 @@ export default function AdminAddUserPage() {
           onSubmit={(e) => {
             e.preventDefault();
             setError(null);
+            setCreatedAccount(null);
             setSubmitting(true);
             void fetch("/api/admin/users", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 name: form.name,
-                email: form.email,
+                email: form.email || undefined,
                 role: form.role,
                 location: form.location,
                 settings: settingsPreview,
@@ -86,11 +92,16 @@ export default function AdminAddUserPage() {
               .then(async (res) => {
                 const data = (await res.json()) as {
                   error?: string;
-                  user?: { name: string };
+                  user?: { name: string; username: string };
+                  password?: string;
                 };
                 if (!res.ok || !data.user)
                   throw new Error(data.error || "Failed to create user");
-                router.push("/admin/users");
+                setCreatedAccount({
+                  username: data.user.username,
+                  password: data.password ?? "demo123",
+                  name: data.user.name,
+                });
               })
               .catch((err: unknown) =>
                 setError(
@@ -202,7 +213,7 @@ export default function AdminAddUserPage() {
               />
             </label>
             <label className="grid gap-2 text-sm">
-              <span className="text-[var(--text-muted)]">Email</span>
+              <span className="text-[var(--text-muted)]">Email (optional)</span>
               <input
                 type="email"
                 value={form.email}
@@ -218,6 +229,33 @@ export default function AdminAddUserPage() {
               />
             </label>
           </div>
+
+          {createdAccount ? (
+            <div
+              className="rounded-2xl border p-4 text-sm"
+              style={{
+                borderColor: "var(--border)",
+                background: "color-mix(in srgb, var(--primary) 10%, var(--surface))",
+              }}
+            >
+              <p className="font-semibold text-[var(--foreground)]">
+                Account created for {createdAccount.name}
+              </p>
+              <div className="mt-3 grid gap-2 text-[var(--text-muted)]">
+                <div>
+                  Username:{" "}
+                  <span className="font-mono text-[var(--foreground)]">{createdAccount.username}</span>
+                </div>
+                <div>
+                  Temporary password:{" "}
+                  <span className="font-mono text-[var(--foreground)]">{createdAccount.password}</span>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-[var(--text-muted)]">
+                If no email was added, the user will be asked for one on first login.
+              </p>
+            </div>
+          ) : null}
 
           <label className="grid gap-2 text-sm md:max-w-md">
             <span className="text-[var(--text-muted)]">Town</span>
