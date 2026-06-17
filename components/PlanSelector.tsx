@@ -11,13 +11,23 @@ type Plan = {
 
 export const PlanSelector: React.FC<{ onSelect: (planId: number, interval: 'monthly' | 'yearly') => void }> = ({ onSelect }) => {
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    axios.get('/api/subscriptions/plans').then(res => setPlans(res.data));
+    axios.get('/api/subscriptions/plans')
+      .then(res => {
+        setPlans(res.data);
+        setError(null);
+      })
+      .catch(() => {
+        setPlans([]);
+        setError('Subscription plans are not available yet.');
+      });
   }, []);
 
   return (
     <div>
+      {error ? <p>{error}</p> : null}
       {plans.map(p => (
         <div key={p.id} style={{ marginBottom: '1rem' }}>
           <h3>{p.name} ({p.role})</h3>

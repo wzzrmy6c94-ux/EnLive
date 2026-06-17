@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
   discount_percent INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_plans_role_name_lower
+ON subscription_plans (role, lower(name));
+
 CREATE TABLE IF NOT EXISTS qr_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   target_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
