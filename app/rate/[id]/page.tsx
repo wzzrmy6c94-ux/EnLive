@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { EnliveShell, Panel } from "@/components/enlive-shell";
 import { QrCodeGenerator } from "@/components/QrCodeGenerator";
+import { CEILING_SWEEP_ERROR, isCeilingSweepRating } from "@/lib/rating-quality";
 
 type Target = {
   id: string;
@@ -192,6 +193,11 @@ export default function RatePage() {
               e.preventDefault();
               setError(null);
               setMessage(null);
+              const scores = [values.c1, values.c2, values.c3, values.c4];
+              if (isCeilingSweepRating(scores)) {
+                setError(CEILING_SWEEP_ERROR);
+                return;
+              }
               const body = {
                 targetId: target.id,
                 category1: values.c1,

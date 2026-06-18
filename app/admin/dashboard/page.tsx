@@ -7,12 +7,20 @@ import { PlanManager } from '@/components/PlanManager';
 
 
 type TargetType = "venue" | "artist" | "city";
+type ProfileModerationStatus = "active" | "flagged" | "disabled";
+
+type ProfileModeration = {
+  status: ProfileModerationStatus;
+  reason: string | null;
+  updatedAt: string | null;
+};
 
 type AdminUserRow = {
   id: string;
   name: string;
   role: TargetType;
   location: string;
+  moderation: ProfileModeration;
   createdAt: string;
   averageScore: number;
   ratingCount: number;
@@ -41,6 +49,13 @@ type AdminDeleteResponse = {
   targetId?: string;
   targetName?: string;
   deletedCount?: number;
+};
+
+type AdminModerationResponse = {
+  ok?: boolean;
+  error?: string;
+  name?: string;
+  moderation?: ProfileModeration;
 };
 
 const CATEGORY_LABELS: Record<TargetType, [string, string, string, string]> = {
@@ -172,6 +187,40 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function updateProfileModeration(target: AdminUserRow, status: ProfileModerationStatus) {
+    const reason = status === "active"
+      ? undefined
+      : window.prompt(status === "disabled" ? "Reason for disabling this profile?" : "Reason for flagging this profile?", target.moderation.reason ?? "");
+    if (reason === null) return;
+
+    if (status === "disabled") {
+      const confirmed = window.confirm(
+        `Disable ${target.name}? Public profile, leaderboard placement, and new rating submissions will be hidden until re-enabled.`,
+      );
+      if (!confirmed) return;
+    }
+
+    setBusyAction(`moderation:${target.id}`);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setModerationStatus", userId: target.id, status, reason }),
+      });
+      const data = (await res.json()) as AdminModerationResponse;
+      if (!res.ok) throw new Error(data.error || "Failed to update profile status");
+      const statusLabel = status === "active" ? "active" : status;
+      setNotice(`${data.name ?? target.name} marked ${statusLabel}.`);
+      await Promise.all([loadOverview(), loadRatings(selectedTarget?.id ?? null, deviceFilter)]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update profile status");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   return (
     <main className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <div className="xl:col-span-2">
@@ -225,13 +274,14 @@ export default function AdminDashboardPage() {
             {loading ? <p className="mt-3 text-sm text-[var(--text-muted)]">Loading...</p> : null}
             <div className="mt-3 overflow-auto rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
               <table className="min-w-full text-left text-sm">
-                <thead className="text-[var(--text-muted)]" style={{ background: "var(--surface)" }}><tr><th className="px-3 py-2 font-medium">Name</th><th className="px-3 py-2 font-medium">Type</th><th className="px-3 py-2 font-medium">Town</th><th className="px-3 py-2 font-medium">Avg</th><th className="px-3 py-2 font-medium">Ratings</th><th className="px-3 py-2 font-medium">Actions</th></tr></thead>
+                <thead className="text-[var(--text-muted)]" style={{ background: "var(--surface)" }}><tr><th className="px-3 py-2 font-medium">Name</th><th className="px-3 py-2 font-medium">Type</th><th className="px-3 py-2 font-medium">Town</th><th className="px-3 py-2 font-medium">Status</th><th className="px-3 py-2 font-medium">Avg</th><th className="px-3 py-2 font-medium">Ratings</th><th className="px-3 py-2 font-medium">Actions</th></tr></thead>
                 <tbody>
                   {users.map((row) => (
                     <tr key={row.id} className={`border-t ${selectedTarget?.id === row.id ? "bg-[var(--surface)]" : ""}`} style={{ borderColor: "var(--border)" }}>
                       <td className="px-3 py-2 text-[var(--foreground)]">{row.name}</td>
                       <td className="px-3 py-2 text-[var(--text-muted)]">{row.role}</td>
                       <td className="px-3 py-2 text-[var(--text-muted)]">{row.location}</td>
+                      <td className="px-3 py-2"><ModerationBadge moderation={row.moderation} /></td>
                       <td className="px-3 py-2 text-[var(--primary)]">{row.averageScore.toFixed(2)}/100</td>
                       <td className="px-3 py-2 text-[var(--text-muted)]">{row.ratingCount}</td>
                       <td className="px-3 py-2">
@@ -247,6 +297,38 @@ export default function AdminDashboardPage() {
                           >
                             View ratings
                           </button>
+                          {row.moderation.status !== "flagged" ? (
+                            <button
+                              type="button"
+                              disabled={busyAction === `moderation:${row.id}`}
+                              onClick={() => void updateProfileModeration(row, "flagged")}
+                              className="rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45"
+                              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                            >
+                              Flag
+                            </button>
+                          ) : null}
+                          {row.moderation.status !== "disabled" ? (
+                            <button
+                              type="button"
+                              disabled={busyAction === `moderation:${row.id}`}
+                              onClick={() => void updateProfileModeration(row, "disabled")}
+                              className="rounded-lg border px-2.5 py-1 text-xs font-medium text-amber-200 transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45"
+                              style={{ borderColor: "rgb(252 211 77 / 0.35)", background: "rgb(252 211 77 / 0.08)" }}
+                            >
+                              Disable
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={busyAction === `moderation:${row.id}`}
+                              onClick={() => void updateProfileModeration(row, "active")}
+                              className="rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45"
+                              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                            >
+                              Enable
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={busyAction === `target:${row.id}` || row.ratingCount === 0}
@@ -394,6 +476,25 @@ function formatScore(value: number) {
 function formatDateTime(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function ModerationBadge({ moderation }: { moderation: ProfileModeration }) {
+  const label = moderation.status === "disabled"
+    ? "Disabled"
+    : moderation.status === "flagged"
+      ? "Flagged"
+      : "Active";
+  const className = moderation.status === "disabled"
+    ? "border-amber-300/40 bg-amber-300/10 text-amber-200"
+    : moderation.status === "flagged"
+      ? "border-fuchsia-300/40 bg-fuchsia-300/10 text-fuchsia-200"
+      : "border-emerald-300/30 bg-emerald-300/10 text-emerald-200";
+
+  return (
+    <span title={moderation.reason ?? undefined} className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${className}`}>
+      {label}
+    </span>
+  );
 }
 
 function categoryDetails(rating: AdminRatingRow) {

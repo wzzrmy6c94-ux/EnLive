@@ -16,6 +16,11 @@ type AdminUserRow = {
   genre: string | null;
   country: string | null;
   squareSubscriptionId: string | null;
+  moderation: {
+    status: "active" | "flagged" | "disabled";
+    reason: string | null;
+    updatedAt: string | null;
+  };
   createdAt: string;
   averageScore: number;
   ratingCount: number;
@@ -69,6 +74,7 @@ export default function AdminUsersPage() {
                   <th className="px-3 py-2 font-medium">EnLive ID</th>
                   <th className="px-3 py-2 font-medium">Type</th>
                   <th className="px-3 py-2 font-medium">Town</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
                   <th className="px-3 py-2 font-medium">Avg</th>
                   <th className="px-3 py-2 font-medium">Ratings</th>
                   <th className="px-3 py-2 font-medium">Created</th>
@@ -105,13 +111,14 @@ export default function AdminUsersPage() {
                         <td className="px-3 py-2 text-[var(--text-muted)]">{row.enliveUid}</td>
                         <td className="px-3 py-2 text-[var(--text-muted)]">{row.role}</td>
                         <td className="px-3 py-2 text-[var(--text-muted)]">{row.location || "—"}</td>
+                        <td className="px-3 py-2"><ModerationBadge status={row.moderation.status} /></td>
                         <td className="px-3 py-2 text-[var(--primary)]">{row.averageScore.toFixed(2)}/100</td>
                         <td className="px-3 py-2 text-[var(--text-muted)]">{row.ratingCount}</td>
                         <td className="px-3 py-2 text-[var(--text-muted)]">{new Date(row.createdAt).toLocaleDateString()}</td>
                       </tr>
                       {expanded ? (
                         <tr id={`admin-user-${row.id}`} className="border-t" style={{ borderColor: "var(--border)" }}>
-                          <td colSpan={8} className="px-3 py-4">
+                          <td colSpan={9} className="px-3 py-4">
                             <div
                               className="grid gap-4 rounded-xl border p-4 md:grid-cols-[1.2fr_1fr]"
                               style={{ borderColor: "var(--border)", background: "var(--surface)" }}
@@ -124,6 +131,8 @@ export default function AdminUsersPage() {
                                 <Detail label="EnLive ID" value={row.enliveUid} mono />
                                 <Detail label="Role" value={row.role} />
                                 <Detail label="Town / City" value={row.location || "—"} />
+                                <Detail label="Moderation" value={formatModeration(row.moderation.status)} />
+                                <Detail label="Moderation reason" value={row.moderation.reason ?? "—"} />
                                 <Detail label="Genre" value={row.genre ?? "—"} />
                                 <Detail label="Country" value={row.country ?? "—"} />
                                 <Detail
@@ -173,5 +182,25 @@ function Detail({ label, value, mono }: { label: string; value: string; mono?: b
         {value}
       </div>
     </div>
+  );
+}
+
+function formatModeration(status: AdminUserRow["moderation"]["status"]) {
+  if (status === "disabled") return "Disabled";
+  if (status === "flagged") return "Flagged";
+  return "Active";
+}
+
+function ModerationBadge({ status }: { status: AdminUserRow["moderation"]["status"] }) {
+  const className = status === "disabled"
+    ? "border-amber-300/40 bg-amber-300/10 text-amber-200"
+    : status === "flagged"
+      ? "border-fuchsia-300/40 bg-fuchsia-300/10 text-fuchsia-200"
+      : "border-emerald-300/30 bg-emerald-300/10 text-emerald-200";
+
+  return (
+    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${className}`}>
+      {formatModeration(status)}
+    </span>
   );
 }

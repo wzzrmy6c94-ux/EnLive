@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { halfLifeDaysForRole, nextRatingAggregate } from "@/lib/ranking";
+import { CEILING_SWEEP_ERROR, isCeilingSweepRating } from "@/lib/rating-quality";
 import { hashPassword, verifyPassword } from "@/lib/server/auth";
 
 export type Role = "venue" | "artist" | "city" | "admin";
@@ -48,6 +49,14 @@ type PublicSocialLinks = {
   website: string | null;
   instagram: string | null;
   tiktok: string | null;
+};
+
+export type ProfileModerationStatus = "active" | "flagged" | "disabled";
+
+type ProfileModeration = {
+  status: ProfileModerationStatus;
+  reason: string | null;
+  updatedAt: string | null;
 };
 
 const CATEGORY_SCORE_MIN = 0;
@@ -113,8 +122,8 @@ function hashEmailVerificationToken(token: string) {
 
 function defaultUserSettings(role: TargetType) {
   return role === "artist"
-    ? { genre: "Unknown", showcaseEnabled: true, socialLinks: {} }
-    : { capacity: null, bookingOpen: true, wheelchairAccess: false, socialLinks: {} };
+    ? { genre: "Unknown", showcaseEnabled: true, socialLinks: {}, moderation: { status: "active" } }
+    : { capacity: null, bookingOpen: true, wheelchairAccess: false, socialLinks: {}, moderation: { status: "active" } };
 }
 
 function readOptionalString(value: unknown) {
@@ -146,6 +155,43 @@ function normalizePublicUrl(value: string | undefined) {
   } catch {
     return null;
   }
+}
+
+function isProfileModerationStatus(value: unknown): value is ProfileModerationStatus {
+  return value === "active" || value === "flagged" || value === "disabled";
+}
+
+function readProfileModeration(settings: Record<string, unknown>): ProfileModeration {
+  const moderation = settings.moderation;
+  const source = moderation && typeof moderation === "object" && !Array.isArray(moderation)
+    ? (moderation as Record<string, unknown>)
+    : {};
+  const legacyDisabled = settings.disabled === true;
+  const status = isProfileModerationStatus(source.status)
+    ? source.status
+    : legacyDisabled
+      ? "disabled"
+      : "active";
+
+  return {
+    status,
+    reason: readOptionalString(source.reason),
+    updatedAt: readOptionalString(source.updatedAt),
+  };
+}
+
+function withProfileModeration(
+  settings: Record<string, unknown>,
+  moderation: ProfileModeration,
+) {
+  return {
+    ...settings,
+    moderation: {
+      status: moderation.status,
+      reason: moderation.reason,
+      updatedAt: moderation.updatedAt,
+    },
+  };
 }
 
 function isValidEnliveUid(role: TargetType, enliveUid: string) {
@@ -284,7 +330,11 @@ export async function withDb<T>(fn: (client: PoolClient) => Promise<T>) {
 export async function listLocations() {
   return withDb(async (db) => {
     const res = await db.query<{ location: string }>(
-      `SELECT DISTINCT location FROM users WHERE role != 'admin' ORDER BY location ASC`,
+      `SELECT DISTINCT location
+       FROM users
+       WHERE role != 'admin'
+         AND COALESCE(settings_json::jsonb #>> '{moderation,status}', 'active') <> 'disabled'
+       ORDER BY location ASC`,
     );
     return res.rows.map((r) => r.location);
   });
@@ -312,6 +362,7 @@ async function getCityRank(
        WHERE u.role = $1
          AND u.location = $2
          AND u.rating_count >= $3
+         AND COALESCE(u.settings_json::jsonb #>> '{moderation,status}', 'active') <> 'disabled'
      ) ranked
      WHERE ranked.id = $4`,
     [target.role, target.location, minRatings, target.id],
@@ -345,6 +396,7 @@ export async function getLeaderboard(params: { targetType: TargetType; location?
        FROM users u
        WHERE u.role = $1 AND (($2::text IS NULL OR $1::text = 'city') OR u.location = $2)
          AND u.rating_count >= $3
+         AND COALESCE(u.settings_json::jsonb #>> '{moderation,status}', 'active') <> 'disabled'
        ORDER BY internal_score DESC NULLS LAST, u.rating_count DESC, u.last_rating_timestamp DESC NULLS LAST, u.name ASC`,
       [params.targetType, params.location ?? null, minRatings],
     );
@@ -362,7 +414,7 @@ export async function getLeaderboard(params: { targetType: TargetType; location?
   });
 }
 
-export async function getTargetById(id: string) {
+export async function getTargetById(id: string, options: { includeDisabled?: boolean; includeModeration?: boolean } = {}) {
   return withDb(async (db) => {
     const targetRes = await db.query<{
       id: string;
@@ -387,6 +439,8 @@ export async function getTargetById(id: string) {
     if (!target) return null;
 
     const settings = JSON.parse(target.settings_json ?? "{}") as Record<string, unknown>;
+    const moderation = readProfileModeration(settings);
+    if (moderation.status === "disabled" && !options.includeDisabled) return null;
     const bio = typeof settings.bio === "string" ? settings.bio : null;
     const address = readOptionalString(settings.address);
     const socialLinks = readPublicSocialLinks(settings);
@@ -421,6 +475,7 @@ export async function getTargetById(id: string) {
       bio,
       address,
       socialLinks,
+      moderation: options.includeModeration ? moderation : undefined,
       createdAt: new Date(target.created_at).toISOString(),
       stats: {
         totalRatings: Number(target.rating_count),
@@ -458,6 +513,9 @@ export async function insertRating(input: {
     if (!values.every(isCategoryScore)) {
       return { ok: false as const, error: "Scores must be between 0 and 100." };
     }
+    if (isCeilingSweepRating(values)) {
+      return { ok: false as const, error: CEILING_SWEEP_ERROR };
+    }
 
     const overall = roundScore(mean(values));
     const id = `rating-${crypto.randomUUID()}`;
@@ -473,9 +531,10 @@ export async function insertRating(input: {
         denominator: number | null;
         last_rating_timestamp: string | null;
         rating_count: number | null;
+        settings_json: string | null;
       }>(
         `SELECT
-           id, role, location, current_score, denominator, last_rating_timestamp, rating_count
+           id, role, location, current_score, denominator, last_rating_timestamp, rating_count, settings_json
          FROM users
          WHERE id = $1 AND role IN ('venue','artist','city')
          FOR UPDATE`,
@@ -485,6 +544,11 @@ export async function insertRating(input: {
       if (!target) {
         await db.query("ROLLBACK");
         return { ok: false as const, error: "Target not found." };
+      }
+      const moderation = readProfileModeration(JSON.parse(target.settings_json ?? "{}") as Record<string, unknown>);
+      if (moderation.status === "disabled") {
+        await db.query("ROLLBACK");
+        return { ok: false as const, error: "This profile is not accepting ratings right now." };
       }
 
       const dupRes = await db.query<{ created_at: string }>(
@@ -701,13 +765,14 @@ export async function listUsersForAdmin() {
       genre: string | null;
       country: string | null;
       square_subscription_id: string | null;
+      settings_json: string | null;
       created_at: string;
       average_score: number | null;
       rating_count: number;
     }>(
       `SELECT
          u.id,u.enlive_uid,u.username,u.name,u.email,u.email_verified_at,u.role,u.location,u.genre,u.country,
-         u.square_subscription_id,u.created_at,
+         u.square_subscription_id,u.settings_json,u.created_at,
          ROUND(u.current_score::numeric,2)::float8 AS average_score,
          u.rating_count
        FROM users u
@@ -727,10 +792,53 @@ export async function listUsersForAdmin() {
       genre: u.genre,
       country: u.country,
       squareSubscriptionId: u.square_subscription_id,
+      moderation: readProfileModeration(JSON.parse(u.settings_json ?? "{}") as Record<string, unknown>),
       createdAt: new Date(u.created_at).toISOString(),
       averageScore: u.average_score ?? 0,
       ratingCount: u.rating_count,
     }));
+  });
+}
+
+export async function setProfileModerationForAdmin(input: {
+  userId: string;
+  status: ProfileModerationStatus;
+  reason?: string;
+}) {
+  return withDb(async (db) => {
+    await db.query("BEGIN");
+    try {
+      const userRes = await db.query<{ id: string; name: string; settings_json: string | null }>(
+        `SELECT id, name, settings_json
+         FROM users
+         WHERE id = $1 AND role IN ('venue','artist','city')
+         FOR UPDATE`,
+        [input.userId],
+      );
+      const user = userRes.rows[0];
+      if (!user) {
+        await db.query("ROLLBACK");
+        return { ok: false as const, error: "Profile not found." };
+      }
+
+      const settings = JSON.parse(user.settings_json ?? "{}") as Record<string, unknown>;
+      const moderation = {
+        status: input.status,
+        reason: input.status === "active" ? null : input.reason?.trim().slice(0, 200) || null,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await db.query(
+        `UPDATE users SET settings_json = $1 WHERE id = $2`,
+        [JSON.stringify(withProfileModeration(settings, moderation)), user.id],
+      );
+
+      await db.query("COMMIT");
+      return { ok: true as const, userId: user.id, name: user.name, moderation };
+    } catch (error) {
+      await db.query("ROLLBACK");
+      throw error;
+    }
   });
 }
 

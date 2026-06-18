@@ -16,6 +16,6 @@ export const GET = withApi(async (request: NextRequest, { requestId }) => {
     return ok(requestId, { user, target: null });
   }
 
-  const target = await getTargetById(user.id);
+  const target = await getTargetById(user.id, { includeDisabled: true, includeModeration: true });
   return ok(requestId, { user, target });
 });
