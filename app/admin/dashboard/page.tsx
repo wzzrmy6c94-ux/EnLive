@@ -136,11 +136,6 @@ export default function AdminDashboardPage() {
   }, [deviceFilter, loadRatings, selectedTarget?.id]);
 
   async function deleteRating(rating: AdminRatingRow) {
-    const confirmed = window.confirm(
-      `Delete this ${rating.targetName ?? rating.targetId} rating from ${formatDateTime(rating.createdAt)}? The profile score will be recalculated from the remaining ratings.`,
-    );
-    if (!confirmed) return;
-
     setBusyAction(`rating:${rating.id}`);
     setError(null);
     setNotice(null);
@@ -162,11 +157,6 @@ export default function AdminDashboardPage() {
   }
 
   async function deleteTargetHistory(target: AdminUserRow) {
-    const confirmed = window.confirm(
-      `Delete all ${target.ratingCount} ratings for ${target.name}? This resets their rating history and current score.`,
-    );
-    if (!confirmed) return;
-
     setBusyAction(`target:${target.id}`);
     setError(null);
     setNotice(null);
@@ -192,13 +182,6 @@ export default function AdminDashboardPage() {
       ? undefined
       : window.prompt(status === "disabled" ? "Reason for disabling this profile?" : "Reason for flagging this profile?", target.moderation.reason ?? "");
     if (reason === null) return;
-
-    if (status === "disabled") {
-      const confirmed = window.confirm(
-        `Disable ${target.name}? Public profile, leaderboard placement, and new rating submissions will be hidden until re-enabled.`,
-      );
-      if (!confirmed) return;
-    }
 
     setBusyAction(`moderation:${target.id}`);
     setError(null);
@@ -252,14 +235,6 @@ export default function AdminDashboardPage() {
           </Panel>
 
           <Panel>
-            <h2 className="text-base font-semibold text-[var(--foreground)]">Test data controls</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => adminAction("clearRatings", setError, setNotice, refresh)} className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-sm text-amber-200 hover:border-amber-300/70">Delete test ratings</button>
-              <button type="button" onClick={() => adminAction("resetDatabase", setError, setNotice, refresh)} className="rounded-xl border px-4 py-2 text-sm" style={{ borderColor: "var(--border-strong)", background: "var(--surface-muted)", color: "var(--primary)" }}>Full reset</button>
-            </div>
-          </Panel>
-
-          <Panel>
             <h2 className="text-base font-semibold text-[var(--foreground)]">Subscription Plans</h2>
             <PlanManager />
           </Panel>
@@ -309,15 +284,13 @@ export default function AdminDashboardPage() {
                             </button>
                           ) : null}
                           {row.moderation.status !== "disabled" ? (
-                            <button
-                              type="button"
+                            <ConfirmActionButton
+                              label="Disable"
+                              confirmLabel="Are you sure?"
                               disabled={busyAction === `moderation:${row.id}`}
-                              onClick={() => void updateProfileModeration(row, "disabled")}
-                              className="rounded-lg border px-2.5 py-1 text-xs font-medium text-amber-200 transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45"
-                              style={{ borderColor: "rgb(252 211 77 / 0.35)", background: "rgb(252 211 77 / 0.08)" }}
-                            >
-                              Disable
-                            </button>
+                              onConfirm={() => void updateProfileModeration(row, "disabled")}
+                              compact
+                            />
                           ) : (
                             <button
                               type="button"
@@ -329,15 +302,13 @@ export default function AdminDashboardPage() {
                               Enable
                             </button>
                           )}
-                          <button
-                            type="button"
+                          <ConfirmActionButton
+                            label="Delete history"
+                            confirmLabel="Are you sure?"
                             disabled={busyAction === `target:${row.id}` || row.ratingCount === 0}
-                            onClick={() => void deleteTargetHistory(row)}
-                            className="rounded-lg border px-2.5 py-1 text-xs font-medium text-amber-200 transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45"
-                            style={{ borderColor: "rgb(252 211 77 / 0.35)", background: "rgb(252 211 77 / 0.08)" }}
-                          >
-                            Delete history
-                          </button>
+                            onConfirm={() => void deleteTargetHistory(row)}
+                            compact
+                          />
                         </div>
                       </td>
                     </tr>
@@ -364,15 +335,12 @@ export default function AdminDashboardPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {selectedTarget ? (
-                  <button
-                    type="button"
+                  <ConfirmActionButton
+                    label="Delete selected history"
+                    confirmLabel="Are you sure?"
                     disabled={busyAction === `target:${selectedTarget.id}` || selectedTarget.ratingCount === 0}
-                    onClick={() => void deleteTargetHistory(selectedTarget)}
-                    className="rounded-xl border px-3 py-2 text-xs font-semibold text-amber-200 transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45"
-                    style={{ borderColor: "rgb(252 211 77 / 0.35)", background: "rgb(252 211 77 / 0.08)" }}
-                  >
-                    Delete selected history
-                  </button>
+                    onConfirm={() => void deleteTargetHistory(selectedTarget)}
+                  />
                 ) : null}
                 <button
                   type="button"
@@ -427,15 +395,12 @@ export default function AdminDashboardPage() {
                     >
                       Public profile
                     </Link>
-                    <button
-                      type="button"
+                    <ConfirmActionButton
+                      label="Delete rating"
+                      confirmLabel="Are you sure?"
                       disabled={busyAction === `rating:${rating.id}`}
-                      onClick={() => void deleteRating(rating)}
-                      className="rounded-xl border px-3 py-2 text-xs font-semibold text-amber-200 transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45"
-                      style={{ borderColor: "rgb(252 211 77 / 0.35)", background: "rgb(252 211 77 / 0.08)" }}
-                    >
-                      Delete rating
-                    </button>
+                      onConfirm={() => void deleteRating(rating)}
+                    />
                   </div>
                 </details>
               )) : <p className="text-sm text-[var(--text-muted)]">No ratings found.</p>}
@@ -447,26 +412,53 @@ export default function AdminDashboardPage() {
   );
 }
 
-function adminAction(
-  action: "clearRatings" | "resetDatabase",
-  setError: (v: string | null) => void,
-  setNotice: (v: string | null) => void,
-  reload: () => void,
-) {
-  setError(null);
-  setNotice(null);
-  void fetch("/api/admin/actions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action }),
-  })
-    .then(async (res) => {
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error || "Action failed");
-      setNotice(action === "clearRatings" ? "All ratings cleared." : "Database reset complete.");
-      reload();
-    })
-    .catch((err: unknown) => setError(err instanceof Error ? err.message : "Action failed"));
+function ConfirmActionButton({
+  label,
+  confirmLabel,
+  disabled,
+  compact = false,
+  onConfirm,
+}: {
+  label: string;
+  confirmLabel: string;
+  disabled?: boolean;
+  compact?: boolean;
+  onConfirm: () => void;
+}) {
+  const [armed, setArmed] = useState(false);
+
+  useEffect(() => {
+    if (!armed) return;
+    const timer = window.setTimeout(() => setArmed(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [armed]);
+
+  useEffect(() => {
+    if (disabled) setArmed(false);
+  }, [disabled]);
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        if (armed) {
+          setArmed(false);
+          onConfirm();
+          return;
+        }
+        setArmed(true);
+      }}
+      className={`${compact ? "rounded-lg px-2.5 py-1" : "rounded-xl px-3 py-2"} border text-xs font-semibold transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45`}
+      style={{
+        borderColor: armed ? "rgb(252 211 77 / 0.75)" : "rgb(252 211 77 / 0.35)",
+        background: armed ? "rgb(252 211 77 / 0.18)" : "rgb(252 211 77 / 0.08)",
+        color: "rgb(253 230 138)",
+      }}
+    >
+      {armed ? confirmLabel : label}
+    </button>
+  );
 }
 
 function formatScore(value: number) {

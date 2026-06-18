@@ -11,6 +11,10 @@ const adminActionSchema = z.object({
   action: z.enum(["clearRatings", "resetDatabase"]),
 });
 
+function broadAdminActionsEnabled() {
+  return process.env.ENLIVE_ENABLE_BROAD_ADMIN_ACTIONS === "true";
+}
+
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
   const session = getSessionFromRequest(request);
@@ -26,6 +30,14 @@ export async function POST(request: NextRequest) {
     return withRequestId(NextResponse.json({ error: "Invalid action." }, { status: 400 }), requestId);
   }
   const { action } = parsed.data;
+  if (!broadAdminActionsEnabled()) {
+    logWarn("admin.actions.broad_actions_disabled", { requestId, adminUserId: session.userId, action });
+    return withRequestId(
+      NextResponse.json({ error: "Broad admin reset actions are disabled." }, { status: 403 }),
+      requestId,
+    );
+  }
+
   if (action === "clearRatings") {
     await clearAllRatings();
     logInfo("admin.actions.clear_ratings", { requestId, adminUserId: session.userId });

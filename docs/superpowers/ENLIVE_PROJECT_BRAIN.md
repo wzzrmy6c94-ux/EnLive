@@ -1285,27 +1285,25 @@ Next steps:
 
 ### 16. Basic Admin Controls
 
-Status: Partially Implemented
+Status: Implemented for MVP
 
 What exists:
 
 * Admin can view venues, artists, and detailed individual ratings.
 * Admin can add users.
-* Admin can clear ratings or reset the database.
 * Admin can view basic leaderboard-related data such as average score and rating count.
 * Admin can inspect rating category scores, timestamps, target IDs, device IDs, and same-device repeat counts.
 * Admin can remove individual abusive ratings and the affected profile score is recalculated from the remaining ratings.
 * Admin can delete a venue or artist's full rating history when needed.
 * Admin can mark profiles as active, flagged, or disabled.
 * Disabled profiles are hidden from public leaderboard/profile discovery and cannot receive new ratings.
-
-What is missing:
-
-* Safer production admin actions in place of broad reset controls.
+* Broad reset controls have been removed from the admin dashboard.
+* Broad reset API actions are disabled unless explicitly enabled by environment configuration.
+* Destructive moderation actions use an explicit two-click "Are you sure?" confirmation button.
 
 Next steps:
 
-* Replace broad reset controls with safer production-scoped moderation actions.
+* Keep admin moderation actions scoped to specific ratings or profiles during the demo phase.
 
 ### 17. Subscription Readiness
 
@@ -1365,8 +1363,7 @@ What does not fully pass yet:
 
 Next implementation order:
 
-1. Replace broad reset controls with safer production-scoped admin moderation actions.
-2. Add real email sending and password recovery.
-3. Tune half-life environment variables after real production data accumulates.
-4. Add profile and cover image uploads.
-5. Revisit subscriptions after the demo phase.
+1. Add real email sending and password recovery.
+2. Tune half-life environment variables after real production data accumulates.
+3. Add profile and cover image uploads.
+4. Revisit subscriptions after the demo phase.
