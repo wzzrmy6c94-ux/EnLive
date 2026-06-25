@@ -12,6 +12,7 @@ type Target = {
   name: string;
   role: "venue" | "artist";
   location: string;
+  emailVerified: boolean;
 };
 
 type RatingValues = {
@@ -170,6 +171,31 @@ export default function RatePage() {
             <QrCodeGenerator targetId={target.id} targetName={target.name} />
             {error && <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>}
             <Link href={`/target/${target.id}`} className="block text-center text-sm underline" style={{ color: "var(--text-muted)" }}>← Back to profile</Link>
+          </Panel>
+        </main>
+      </EnliveShell>
+    );
+  }
+
+  if (!target.emailVerified) {
+    return (
+      <EnliveShell
+        title={`Rate ${target.name}`}
+        subtitle={`${target.role === "venue" ? "Venue" : "Artist/Band"} • ${target.location} • Public QR submission form`}
+        headerMode="public"
+      >
+        <main className="flex justify-center py-8">
+          <Panel className="w-full max-w-md space-y-4 text-center">
+            <div>
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">Rating form inactive</div>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--foreground)]">{target.name}</h2>
+            </div>
+            <p className="text-sm leading-6 text-[var(--text-muted)]">
+              This EnLive rating form exists, but ratings are not open until the profile email has been verified.
+            </p>
+            <Link href="/" className="inline-flex text-sm font-semibold text-[var(--primary)] transition hover:opacity-80">
+              Back to EnLive
+            </Link>
           </Panel>
         </main>
       </EnliveShell>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { AdminQrModal } from "@/components/admin-qr-modal";
 import { Panel } from "@/components/enlive-shell";
 import { PlanManager } from '@/components/PlanManager';
 
@@ -18,6 +19,7 @@ type ProfileModeration = {
 type AdminUserRow = {
   id: string;
   name: string;
+  emailVerified: boolean;
   role: TargetType;
   location: string;
   moderation: ProfileModeration;
@@ -80,6 +82,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [ratingsLoading, setRatingsLoading] = useState(true);
   const [selectedTarget, setSelectedTarget] = useState<AdminUserRow | null>(null);
+  const [qrTarget, setQrTarget] = useState<AdminUserRow | null>(null);
   const [deviceFilter, setDeviceFilter] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -272,6 +275,16 @@ export default function AdminDashboardPage() {
                           >
                             View ratings
                           </button>
+                          {row.role !== "city" ? (
+                            <button
+                              type="button"
+                              onClick={() => setQrTarget(row)}
+                              className="rounded-lg border px-2.5 py-1 text-xs font-medium transition hover:opacity-80"
+                              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                            >
+                              Print QR
+                            </button>
+                          ) : null}
                           {row.moderation.status !== "flagged" ? (
                             <button
                               type="button"
@@ -408,6 +421,7 @@ export default function AdminDashboardPage() {
           </Panel>
         </div>
       </div>
+      <AdminQrModal target={qrTarget} onClose={() => setQrTarget(null)} />
     </main>
   );
 }

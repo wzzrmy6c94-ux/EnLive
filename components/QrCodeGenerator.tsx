@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type QrResult = {
   target: {
@@ -21,7 +21,28 @@ function fileSlug(value: string) {
     .slice(0, 48) || "enlive";
 }
 
-export function QrCodeGenerator({ targetId, targetName }: { targetId: string; targetName?: string }) {
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    };
+    return entities[char] ?? char;
+  });
+}
+
+export function QrCodeGenerator({
+  targetId,
+  targetName,
+  autoGenerate = false,
+}: {
+  targetId: string;
+  targetName?: string;
+  autoGenerate?: boolean;
+}) {
   const [qr, setQr] = useState<QrResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,10 +52,11 @@ export function QrCodeGenerator({ targetId, targetName }: { targetId: string; ta
     return `${fileSlug(qr?.target.name ?? targetName ?? "enlive")}-rating-qr`;
   }, [qr?.target.name, targetName]);
 
-  async function generate() {
+  const generate = useCallback(async () => {
     setLoading(true);
     setError(null);
     setCopied(false);
+    setQr(null);
     try {
       const res = await fetch("/api/qr/generate", {
         method: "POST",
@@ -51,13 +73,97 @@ export function QrCodeGenerator({ targetId, targetName }: { targetId: string; ta
     } finally {
       setLoading(false);
     }
-  }
+  }, [targetId]);
+
+  useEffect(() => {
+    if (!autoGenerate) return;
+    void generate();
+  }, [autoGenerate, generate]);
 
   async function copyLink() {
     if (!qr?.ratingUrl) return;
     await navigator.clipboard.writeText(qr.ratingUrl);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  function printQr() {
+    if (!qr) return;
+
+    const printWindow = window.open("", "_blank", "width=640,height=760");
+    if (!printWindow) {
+      setError("Could not open the print window. Please allow pop-ups for this site and try again.");
+      return;
+    }
+
+    const name = escapeHtml(qr.target.name);
+    const ratingUrl = escapeHtml(qr.ratingUrl);
+    const pngDataUrl = escapeHtml(qr.pngDataUrl);
+    const title = `${name} EnLive rating QR code`;
+
+    printWindow.document.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${title}</title>
+    <style>
+      @page { size: A4; margin: 18mm; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: #111827;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #ffffff;
+      }
+      .sheet {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        text-align: center;
+      }
+      h1 {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1.15;
+      }
+      p {
+        margin: 0;
+        max-width: 560px;
+        color: #374151;
+        font-size: 16px;
+        line-height: 1.45;
+      }
+      img {
+        width: 320px;
+        height: 320px;
+        border: 1px solid #d1d5db;
+        padding: 12px;
+      }
+      .url {
+        max-width: 560px;
+        overflow-wrap: anywhere;
+        color: #6b7280;
+        font-size: 12px;
+      }
+      @media print {
+        body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <p>Scan to rate on EnLive</p>
+      <h1>${name}</h1>
+      <img src="${pngDataUrl}" alt="EnLive rating QR code for ${name}" onload="setTimeout(function(){ window.focus(); window.print(); }, 200)" />
+      <p class="url">${ratingUrl}</p>
+    </main>
+  </body>
+</html>`);
+    printWindow.document.close();
   }
 
   return (
@@ -80,6 +186,16 @@ export function QrCodeGenerator({ targetId, targetName }: { targetId: string; ta
             style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
           >
             {copied ? "Copied" : "Copy link"}
+          </button>
+        ) : null}
+        {qr ? (
+          <button
+            type="button"
+            onClick={printQr}
+            className="rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
+            style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+          >
+            Print QR
           </button>
         ) : null}
       </div>

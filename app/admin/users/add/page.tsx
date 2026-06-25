@@ -66,6 +66,7 @@ export default function AdminAddUserPage() {
           <span className="font-medium text-[var(--foreground)]">A123456</span>{" "}
           or
           <span className="font-medium text-[var(--foreground)]">V123456</span>.
+          The rating QR can be printed immediately, but the form stays inactive until email verification.
         </p>
       </section>
 
@@ -251,7 +252,7 @@ export default function AdminAddUserPage() {
                 </div>
               </div>
               <p className="mt-3 text-xs text-[var(--text-muted)]">
-                If no email was added, the user will be asked for one on first login.
+                This profile now has a rating URL and QR code. Ratings stay inactive until the account email is verified.
               </p>
             </div>
           ) : null}

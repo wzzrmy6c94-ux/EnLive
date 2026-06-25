@@ -423,13 +423,14 @@ export async function getTargetById(id: string, options: { includeDisabled?: boo
       role: TargetType;
       location: string;
       genre: string | null;
+      email_verified_at: string | null;
       settings_json: string | null;
       current_score: number | null;
       rating_count: number;
       created_at: string;
     }>(
       `SELECT
-         id, enlive_uid, name, role, location, genre, settings_json,
+         id, enlive_uid, name, role, location, genre, email_verified_at, settings_json,
          current_score, rating_count, created_at
        FROM users
        WHERE id = $1 AND role IN ('venue','artist','city')`,
@@ -472,6 +473,7 @@ export async function getTargetById(id: string, options: { includeDisabled?: boo
       role: target.role,
       location: target.location,
       genre: target.genre,
+      emailVerified: Boolean(target.email_verified_at),
       bio,
       address,
       socialLinks,
@@ -531,10 +533,11 @@ export async function insertRating(input: {
         denominator: number | null;
         last_rating_timestamp: string | null;
         rating_count: number | null;
+        email_verified_at: string | null;
         settings_json: string | null;
       }>(
         `SELECT
-           id, role, location, current_score, denominator, last_rating_timestamp, rating_count, settings_json
+           id, role, location, current_score, denominator, last_rating_timestamp, rating_count, email_verified_at, settings_json
          FROM users
          WHERE id = $1 AND role IN ('venue','artist','city')
          FOR UPDATE`,
@@ -549,6 +552,10 @@ export async function insertRating(input: {
       if (moderation.status === "disabled") {
         await db.query("ROLLBACK");
         return { ok: false as const, error: "This profile is not accepting ratings right now." };
+      }
+      if (!target.email_verified_at) {
+        await db.query("ROLLBACK");
+        return { ok: false as const, error: "This rating form is not active until the profile email has been verified." };
       }
 
       const dupRes = await db.query<{ created_at: string }>(

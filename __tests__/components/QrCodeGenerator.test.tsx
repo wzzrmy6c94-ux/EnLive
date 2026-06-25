@@ -23,6 +23,7 @@ test('renders download links after generating QR', async () => {
   const pngLink = await waitFor(() => screen.getByText('Download PNG'));
   expect(pngLink).toBeInTheDocument();
   expect(screen.getByText('Download SVG')).toBeInTheDocument();
+  expect(screen.getByText('Print QR')).toBeInTheDocument();
   expect(screen.getByText('https://enlive.app/rate/target-123')).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledWith('/api/qr/generate', expect.objectContaining({
     method: 'POST',

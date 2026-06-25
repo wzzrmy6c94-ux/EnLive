@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     role: payload.role,
     location: payload.location,
     settings: payload.settings,
-    emailVerified: Boolean(payload.email),
+    emailVerified: false,
   });
   if (!result.ok) {
     logWarn("admin.users.create_failed", { requestId, adminUserId: session.userId, reason: result.error });

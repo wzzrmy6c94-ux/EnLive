@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
+import { AdminQrModal } from "@/components/admin-qr-modal";
 import { Panel } from "@/components/enlive-shell";
 
 type AdminUserRow = {
@@ -31,6 +32,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [qrTarget, setQrTarget] = useState<AdminUserRow | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/overview", { cache: "no-store" })
@@ -145,7 +147,7 @@ export default function AdminUsersPage() {
                                 <div>
                                   <div className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">Admin shortcuts</div>
                                   <p className="mt-2 text-sm text-[var(--text-muted)]">
-                                    Open the public profile for this account.
+                                    Open the public profile or print this account's rating QR code.
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
@@ -156,6 +158,16 @@ export default function AdminUsersPage() {
                                   >
                                     Public profile
                                   </Link>
+                                  {row.role !== "city" ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setQrTarget(row)}
+                                      className="rounded-xl border px-3 py-2 text-xs font-semibold transition hover:opacity-80"
+                                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                                    >
+                                      Print QR
+                                    </button>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>
@@ -170,6 +182,7 @@ export default function AdminUsersPage() {
           </div>
         ) : null}
       </Panel>
+      <AdminQrModal target={qrTarget} onClose={() => setQrTarget(null)} />
     </main>
   );
 }
