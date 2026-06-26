@@ -71,11 +71,25 @@ export function UserHeader({
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         {!hideHeroHeader ? (
           <div>
-            <Image src={EnliveLogoRed} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain" loading="eager" style={{ width: 'auto', height: 'auto' }} />
+            <Image
+              src={EnliveLogoRed}
+              alt="Enlive"
+              height={48}
+              width={144}
+              className="block h-8 w-auto max-w-[8rem] object-contain sm:h-9 sm:max-w-[9rem]"
+              loading="eager"
+            />
           </div>
         ) : (
           <>
-            <Image src={EnliveLogoRed} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain" loading="eager" style={{ width: 'auto', height: 'auto' }} />
+            <Image
+              src={EnliveLogoRed}
+              alt="Enlive"
+              height={48}
+              width={144}
+              className="block h-8 w-auto max-w-[8rem] object-contain sm:h-9 sm:max-w-[9rem]"
+              loading="eager"
+            />
           </>
         )}
           <div className="flex flex-wrap items-center gap-2 text-sm">
