@@ -51,7 +51,7 @@ export function ThemeToggle() {
           ? `Switch to ${theme === "dark" ? "light" : "dark"} theme`
           : "Toggle theme"
       }
-      className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border backdrop-blur transition hover:scale-[1.04]"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border backdrop-blur transition hover:scale-[1.04] sm:right-6"
       style={{
         borderColor: "var(--border-strong)",
         background:

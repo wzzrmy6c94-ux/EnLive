@@ -8,7 +8,7 @@ export function ContributorsButton() {
       href="/contributors"
       aria-label="View contributors"
       title="Contributors"
-      className="fixed bottom-[8.8rem] right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border backdrop-blur transition hover:scale-[1.04]"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+8.8rem)] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border backdrop-blur transition hover:scale-[1.04] sm:right-6"
       style={{
         borderColor: "var(--border-strong)",
         background: "linear-gradient(180deg, var(--surface-strong), var(--surface))",

@@ -279,7 +279,92 @@ export default function AdminDashboardPage() {
               <button type="button" onClick={refresh} className="rounded-xl border px-3 py-1 text-xs" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>Refresh</button>
             </div>
             {loading ? <p className="mt-3 text-sm text-[var(--text-muted)]">Loading...</p> : null}
-            <div className="mt-3 overflow-auto rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
+            {!loading ? (
+              <div className="mt-3 grid gap-3 md:hidden">
+                {users.map((row) => (
+                  <div
+                    key={row.id}
+                    className={`rounded-2xl border p-4 ${selectedTarget?.id === row.id ? "ring-2 ring-[var(--primary)]" : ""}`}
+                    style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-base font-semibold text-[var(--foreground)]">{row.name}</div>
+                        <div className="mt-1 text-sm text-[var(--text-muted)]">{row.role} / {row.location || "No town"}</div>
+                      </div>
+                      <ModerationBadge moderation={row.moderation} />
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <DetailRow label="Average" value={`${row.averageScore.toFixed(2)}/100`} />
+                      <DetailRow label="Ratings" value={String(row.ratingCount)} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTarget(row);
+                          setDeviceFilter(null);
+                        }}
+                        className="min-h-10 rounded-lg border px-3 py-2 text-xs font-medium transition hover:opacity-80"
+                        style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                      >
+                        View ratings
+                      </button>
+                      {row.role !== "city" ? (
+                        <button
+                          type="button"
+                          onClick={() => setQrTarget(row)}
+                          className="min-h-10 rounded-lg border px-3 py-2 text-xs font-medium transition hover:opacity-80"
+                          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                        >
+                          Print QR
+                        </button>
+                      ) : null}
+                      {!row.emailVerified ? (
+                        <ConfirmActionButton
+                          label="Activate form"
+                          confirmLabel="Are you sure?"
+                          disabled={busyAction === `activate:${row.id}`}
+                          onConfirm={() => void activateRatingForm(row)}
+                          compact
+                        />
+                      ) : null}
+                      {row.moderation.status !== "flagged" ? (
+                        <button
+                          type="button"
+                          disabled={busyAction === `moderation:${row.id}`}
+                          onClick={() => void updateProfileModeration(row, "flagged")}
+                          className="min-h-10 rounded-lg border px-3 py-2 text-xs font-medium transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45"
+                          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                        >
+                          Flag
+                        </button>
+                      ) : null}
+                      {row.moderation.status !== "disabled" ? (
+                        <ConfirmActionButton
+                          label="Disable"
+                          confirmLabel="Are you sure?"
+                          disabled={busyAction === `moderation:${row.id}`}
+                          onConfirm={() => void updateProfileModeration(row, "disabled")}
+                          compact
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={busyAction === `moderation:${row.id}`}
+                          onClick={() => void updateProfileModeration(row, "active")}
+                          className="min-h-10 rounded-lg border px-3 py-2 text-xs font-medium transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-45"
+                          style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                        >
+                          Enable
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <div className="mt-3 hidden overflow-auto rounded-xl border md:block" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
               <table className="min-w-full text-left text-sm">
                 <thead className="text-[var(--text-muted)]" style={{ background: "var(--surface)" }}><tr><th className="px-3 py-2 font-medium">Name</th><th className="px-3 py-2 font-medium">Type</th><th className="px-3 py-2 font-medium">Town</th><th className="px-3 py-2 font-medium">Status</th><th className="px-3 py-2 font-medium">Avg</th><th className="px-3 py-2 font-medium">Ratings</th><th className="px-3 py-2 font-medium">Actions</th></tr></thead>
                 <tbody>

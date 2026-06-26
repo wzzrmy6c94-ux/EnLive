@@ -315,7 +315,7 @@ export default function TargetProfilePage() {
           <div className="px-6 pb-6">
             <div className="flex items-end justify-between" style={{ marginTop: "-40px" }}>
               <div
-                className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 text-2xl font-bold shadow-2xl select-none ring-2 ring-white/20"
+                className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 text-xl font-bold shadow-2xl select-none ring-2 ring-white/20 sm:h-24 sm:w-24 sm:text-2xl"
                 style={{
                   borderColor: "var(--surface)",
                   background: `
@@ -332,7 +332,7 @@ export default function TargetProfilePage() {
                 <button
                   type="button"
                   onClick={() => { setEditing(true); setSaveSuccess(false); setSaveError(null); }}
-                  className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                  className="flex min-h-10 items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-semibold transition hover:opacity-80"
                   style={{ borderColor: "var(--primary)", color: "var(--primary)", background: "transparent" }}
                 >
                   <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
@@ -345,7 +345,7 @@ export default function TargetProfilePage() {
                 <button
                   type="button"
                   onClick={cancelEdit}
-                  className="rounded-full border px-4 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                  className="min-h-10 rounded-full border px-4 py-1.5 text-xs font-semibold transition hover:opacity-80"
                   style={{ borderColor: "var(--border)", color: "var(--text-muted)", background: "transparent" }}
                 >
                   Cancel
@@ -356,7 +356,7 @@ export default function TargetProfilePage() {
             {/* Identity */}
             <div className="mt-3 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl md:text-3xl font-black bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text -webkit-background-clip-text bg-[length:200%_200%] animate-[shimmer_3s_ease-in-out_infinite] tracking-tight">
+                <h1 className="break-words text-2xl font-black tracking-tight bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text -webkit-background-clip-text bg-[length:200%_200%] animate-[shimmer_3s_ease-in-out_infinite] md:text-3xl">
                   {target.name}
                 </h1>
                 {target.enliveUid && (
@@ -476,7 +476,7 @@ export default function TargetProfilePage() {
                   window.setTimeout(() => setCopied(false), 2000);
                 });
               }}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium transition hover:opacity-80"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium transition hover:opacity-80"
               style={{ borderColor: "var(--border)", background: "var(--surface-muted)", color: "var(--text-muted)" }}
             >
               <svg viewBox="0 0 16 16" className="h-4 w-4 fill-current" aria-hidden="true">

@@ -36,7 +36,7 @@ export function AdminHeader() {
 
   return (
     <header
-      className="mb-6 overflow-visible rounded-3xl border p-4 shadow-[0_10px_40px_var(--shadow)] backdrop-blur sm:p-5"
+      className="mb-6 overflow-visible rounded-2xl border p-3 shadow-[0_10px_40px_var(--shadow)] backdrop-blur sm:rounded-3xl sm:p-5"
       style={{
         borderColor: "var(--border)",
         background:
@@ -52,7 +52,7 @@ export function AdminHeader() {
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <Link
             href="/admin/users"
-            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+            className={`inline-flex min-h-10 items-center rounded-full border px-3 py-1.5 text-xs font-medium transition ${
               pathname === "/admin/users" ? "opacity-100" : "opacity-80 hover:opacity-100"
             }`}
             style={{
@@ -68,7 +68,7 @@ export function AdminHeader() {
             <button
               type="button"
               onClick={() => setAccountOpen((v) => !v)}
-              className="flex items-center gap-2 rounded-full border px-2 py-1 transition"
+              className="flex min-h-10 items-center gap-2 rounded-full border px-2 py-1 transition"
               style={{ borderColor: "var(--border)", background: "var(--surface)" }}
             >
               <span className="max-w-[140px] truncate text-xs">{sessionName}</span>

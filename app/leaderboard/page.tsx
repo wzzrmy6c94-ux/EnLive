@@ -325,7 +325,68 @@ export default function LeaderboardPage() {
             {/* ── List view ────────────────────────────────────────────── */}
             {viewMode === "list" ? (
               <Panel className="mx-auto w-full max-w-4xl overflow-hidden p-0 shadow-[0_30px_90px_var(--shadow)]">
-                <div className="overflow-x-auto">
+                <div className="grid gap-3 p-3 md:hidden">
+                  {loadingRows ? (
+                    <div className="px-4 py-14 text-center text-sm" style={{ color: "var(--text-muted)" }}>
+                      Loading leaderboard…
+                    </div>
+                  ) : rowsError ? (
+                    <div className="px-4 py-14 text-center text-sm" style={{ color: "var(--danger)" }}>
+                      {rowsError}
+                    </div>
+                  ) : filteredRows.length === 0 ? (
+                    <div className="px-4 py-14 text-center text-sm" style={{ color: "var(--text-muted)" }}>
+                      {searchQuery ? "No matches found for your search." : "No entries found for this category."}
+                    </div>
+                  ) : (
+                    paginatedRows.map((row, i) => {
+                      const rank = (currentPage - 1) * PAGE_SIZE + i + 1;
+                      const roleLabel = activeTab === "city" ? "City" : activeTab === "venue" ? "Venue" : "Artist";
+                      return (
+                        <button
+                          key={row.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedId(row.id);
+                            setViewMode("profile");
+                          }}
+                          className={`min-h-[5.75rem] rounded-2xl border p-4 text-left shadow-[0_10px_28px_var(--shadow)] transition active:scale-[0.99] ${
+                            rank === 1 ? "rank-first" : ""
+                          }`}
+                          style={{
+                            ...rankRowStyle(rank, i),
+                            borderColor: "var(--border)",
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                                #{rank} · {roleLabel}
+                              </div>
+                              <div className="mt-1 truncate text-base font-semibold" style={{ color: rank === 1 ? "var(--primary)" : "var(--text-strong)" }}>
+                                {row.name}
+                              </div>
+                              <div className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+                                {activeTab === "artist" && row.genre ? `${row.genre} · ` : ""}
+                                {activeTab === "city" ? row.country : row.location}
+                              </div>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <div className="text-xl font-black" style={{ color: rank === 1 ? "var(--primary)" : "var(--text-strong)" }}>
+                                {row.averageScore.toFixed(2)}
+                              </div>
+                              <div className="text-[0.65rem] uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
+                                Points
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="hidden overflow-x-auto md:block">
                   {(() => {
                     const totalCols = activeTab === "artist" ? 7 : 6;
                     return (
@@ -544,13 +605,13 @@ export default function LeaderboardPage() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div
-                    className="flex items-center justify-center gap-6 border-t px-6 py-4"
+                    className="flex flex-col items-stretch justify-center gap-3 border-t px-4 py-4 sm:flex-row sm:items-center sm:gap-6 sm:px-6"
                     style={{ borderColor: "var(--border)" }}
                   >
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="rounded-lg border px-4 py-2 text-xs font-semibold transition disabled:opacity-20 hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                      className="min-h-11 rounded-lg border px-4 py-2 text-xs font-semibold transition disabled:opacity-20 hover:border-[var(--primary)] hover:text-[var(--primary)]"
                       style={{
                         borderColor: "var(--border)",
                         background: "var(--surface-elevated)",
@@ -560,7 +621,7 @@ export default function LeaderboardPage() {
                       Previous
                     </button>
                     <div
-                      className="text-xs uppercase tracking-widest"
+                      className="text-center text-xs uppercase tracking-widest"
                       style={{ color: "var(--text-muted)" }}
                     >
                       Page{" "}
@@ -577,7 +638,7 @@ export default function LeaderboardPage() {
                         setCurrentPage((p) => Math.min(totalPages, p + 1))
                       }
                       disabled={currentPage === totalPages}
-                      className="rounded-lg border px-4 py-2 text-xs font-semibold transition disabled:opacity-20 hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                      className="min-h-11 rounded-lg border px-4 py-2 text-xs font-semibold transition disabled:opacity-20 hover:border-[var(--primary)] hover:text-[var(--primary)]"
                       style={{
                         borderColor: "var(--border)",
                         background: "var(--surface-elevated)",
@@ -598,7 +659,7 @@ export default function LeaderboardPage() {
                 >
                   <button
                     onClick={() => setViewMode("list")}
-                    className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest transition hover:text-[var(--foreground)]"
+                    className="flex min-h-10 items-center gap-2 text-xs font-medium uppercase tracking-widest transition hover:text-[var(--foreground)]"
                     style={{ color: "var(--text-muted)" }}
                   >
                     ← Back to Leaderboard
@@ -609,7 +670,7 @@ export default function LeaderboardPage() {
                   <>
                     {/* Hero */}
                     <div
-                      className="relative h-56 p-5 sm:h-64 sm:p-6"
+                      className="relative min-h-56 p-5 sm:h-64 sm:p-6"
                       style={{
                         background:
                           "linear-gradient(180deg, var(--hero-from) 0%, var(--hero-via) 35%, var(--hero-to) 100%)",
@@ -619,7 +680,7 @@ export default function LeaderboardPage() {
                       <div className="relative flex h-full flex-col justify-end sm:flex-row sm:items-end sm:gap-5">
                         {/* Avatar */}
                         <div
-                          className="mb-4 flex h-28 w-28 items-center justify-center rounded-md text-4xl font-bold shadow-[0_18px_40px_var(--shadow)] sm:mb-0 sm:h-36 sm:w-36"
+                          className="mb-4 flex h-24 w-24 items-center justify-center rounded-md text-3xl font-bold shadow-[0_18px_40px_var(--shadow)] sm:mb-0 sm:h-36 sm:w-36 sm:text-4xl"
                           style={{
                             background:
                               "linear-gradient(135deg, var(--primary), var(--primary-deep))",
@@ -645,7 +706,7 @@ export default function LeaderboardPage() {
                               : "Artist / Band"}
                           </div>
                           <h2
-                            className="truncate text-3xl font-bold tracking-tight sm:text-5xl"
+                            className="break-words text-3xl font-bold tracking-tight sm:text-5xl"
                             style={{ color: "var(--hero-foreground)" }}
                           >
                             {selectedRow.name}

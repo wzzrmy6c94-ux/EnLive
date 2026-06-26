@@ -61,7 +61,7 @@ export function UserHeader({
 
   return (
     <header
-      className={`${hideHeroHeader ? "mb-4" : "mb-6"} relative z-40 overflow-visible rounded-3xl border p-4 shadow-[0_10px_40px_var(--shadow)] backdrop-blur sm:p-5`}
+      className={`${hideHeroHeader ? "mb-4" : "mb-6"} relative z-40 overflow-visible rounded-2xl border p-3 shadow-[0_10px_40px_var(--shadow)] backdrop-blur sm:rounded-3xl sm:p-5`}
       style={{
         borderColor: "var(--border)",
         background:
@@ -78,7 +78,7 @@ export function UserHeader({
             <Image src={EnliveLogoRed} alt="Enlive" height={32} width={120} className="h-8 w-auto object-contain" loading="eager" style={{ width: 'auto', height: 'auto' }} />
           </>
         )}
-        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
           {headerMode === "public" ? (
             <>
               <NavLink href="/">Leaderboard</NavLink>
@@ -89,7 +89,7 @@ export function UserHeader({
               {sessionUserId && (
                 <Link
                   href={`/target/${sessionUserId}`}
-                  className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition hover:opacity-80"
+                  className="flex min-h-10 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition hover:opacity-80"
                   style={{
                     borderColor: "var(--border)",
                     background: "var(--surface)",
@@ -106,7 +106,7 @@ export function UserHeader({
                 <button
                   type="button"
                   onClick={() => setAccountOpen((v) => !v)}
-                  className="flex items-center gap-2 rounded-full border px-2 py-1 transition"
+                  className="flex min-h-10 items-center gap-2 rounded-full border px-2 py-1 transition"
                   style={{
                     borderColor: "var(--border)",
                     background: "var(--surface)",

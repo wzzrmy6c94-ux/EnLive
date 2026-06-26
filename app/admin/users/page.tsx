@@ -98,7 +98,92 @@ export default function AdminUsersPage() {
         {notice ? <p className="mb-3 text-sm font-medium text-emerald-300">{notice}</p> : null}
         {error ? <p className="text-sm text-[var(--primary)]">{error}</p> : null}
         {!loading && !error ? (
-          <div className="overflow-auto rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
+          <>
+            <div className="grid gap-3 md:hidden">
+              {users.map((row) => {
+                const expanded = expandedId === row.id;
+                return (
+                  <article
+                    key={row.id}
+                    className="rounded-2xl border p-4"
+                    style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}
+                  >
+                    <button
+                      type="button"
+                      className="flex min-h-12 w-full items-start justify-between gap-3 text-left"
+                      aria-expanded={expanded}
+                      aria-controls={`admin-user-mobile-${row.id}`}
+                      onClick={() => setExpandedId(expanded ? null : row.id)}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-base font-semibold text-[var(--foreground)]">{row.name}</span>
+                        <span className="mt-1 block text-sm text-[var(--text-muted)]">{row.username} / {row.enliveUid}</span>
+                      </span>
+                      <span className="shrink-0 text-[var(--text-muted)]">{expanded ? "−" : "+"}</span>
+                    </button>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <ModerationBadge status={row.moderation.status} />
+                      <span className="rounded-full border px-2.5 py-1 text-xs text-[var(--text-muted)]" style={{ borderColor: "var(--border)" }}>
+                        {row.emailVerified ? "Email verified" : "Needs verification"}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <Detail label="Type" value={row.role} />
+                      <Detail label="Town" value={row.location || "—"} />
+                      <Detail label="Avg" value={`${row.averageScore.toFixed(2)}/100`} />
+                      <Detail label="Ratings" value={String(row.ratingCount)} />
+                    </div>
+
+                    {expanded ? (
+                      <div id={`admin-user-mobile-${row.id}`} className="mt-4 grid gap-4">
+                        <div className="grid gap-3">
+                          <Detail label="Email" value={row.email ?? "Not set"} mono />
+                          <Detail label="Internal ID" value={row.id} mono />
+                          <Detail label="Genre" value={row.genre ?? "—"} />
+                          <Detail label="Country" value={row.country ?? "—"} />
+                          <Detail label="Moderation reason" value={row.moderation.reason ?? "—"} />
+                          <Detail
+                            label="Subscription"
+                            value={row.squareSubscriptionId ? `Active (${row.squareSubscriptionId})` : "No subscription ID"}
+                            mono={Boolean(row.squareSubscriptionId)}
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Link
+                            href={`/target/${row.id}`}
+                            className="inline-flex min-h-10 items-center rounded-xl border px-3 py-2 text-xs font-semibold transition hover:opacity-80"
+                            style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                          >
+                            Public profile
+                          </Link>
+                          {row.role !== "city" ? (
+                            <button
+                              type="button"
+                              onClick={() => setQrTarget(row)}
+                              className="min-h-10 rounded-xl border px-3 py-2 text-xs font-semibold transition hover:opacity-80"
+                              style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                            >
+                              Print QR
+                            </button>
+                          ) : null}
+                          {!row.emailVerified ? (
+                            <ConfirmActionButton
+                              label="Activate form"
+                              confirmLabel="Are you sure?"
+                              disabled={busyAction === `activate:${row.id}`}
+                              onConfirm={() => void activateRatingForm(row)}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-auto rounded-xl border md:block" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
             <table className="min-w-full text-left text-sm">
               <thead className="text-[var(--text-muted)]" style={{ background: "var(--surface)" }}>
                 <tr>
@@ -219,6 +304,7 @@ export default function AdminUsersPage() {
               </tbody>
             </table>
           </div>
+          </>
         ) : null}
       </Panel>
       <AdminQrModal target={qrTarget} onClose={() => setQrTarget(null)} />

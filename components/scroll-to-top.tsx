@@ -31,7 +31,7 @@ export function ScrollToTopButton() {
       aria-label="Scroll to top"
       title="Scroll to top"
       aria-disabled={!enabled}
-      className="fixed bottom-[4.9rem] right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border backdrop-blur transition duration-300"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.9rem)] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border backdrop-blur transition duration-300 sm:right-6"
       style={{
         borderColor: enabled ? "var(--border-strong)" : "var(--border)",
         background: enabled

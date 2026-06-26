@@ -162,7 +162,7 @@ export default function RatePage() {
         subtitle={`${target.role === "venue" ? "Venue" : "Artist/Band"} • ${target.location} • Generate QR for ratings`}
         headerMode="private"
       >
-        <main className="flex justify-center py-8">
+        <main className="flex justify-center py-4 sm:py-8">
           <Panel className="w-full max-w-md space-y-4">
             <div className="text-center">
               <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>QR Code Generator</h2>
@@ -184,7 +184,7 @@ export default function RatePage() {
         subtitle={`${target.role === "venue" ? "Venue" : "Artist/Band"} • ${target.location} • Public QR submission form`}
         headerMode="public"
       >
-        <main className="flex justify-center py-8">
+        <main className="flex justify-center py-4 sm:py-8">
           <Panel className="w-full max-w-md space-y-4 text-center">
             <div>
               <div className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">Rating form inactive</div>
@@ -211,8 +211,8 @@ export default function RatePage() {
       headerMode="public"
     >
       {/* Center the rating form */}
-      <main className="flex justify-center py-8">
-        <Panel className="w-full max-w-md">
+      <main className="flex justify-center py-4 sm:py-8">
+        <Panel className="w-full max-w-lg">
           <form
             className="space-y-4"
             onSubmit={async (e) => {
@@ -261,7 +261,7 @@ export default function RatePage() {
               return (
                 <label
                   key={category.label}
-                  className="block rounded-2xl border p-4"
+                  className="block rounded-2xl border p-4 sm:p-5"
                   style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}
                 >
                   <div className="mb-3 text-sm font-medium text-[var(--foreground)]">{category.label}</div>
@@ -289,14 +289,14 @@ export default function RatePage() {
               );
             })}
 
-            {error ? <p className="text-sm text-[var(--primary)]">{error}</p> : null}
-            {message ? <p className="text-sm text-[var(--primary)]">{message}</p> : null}
+            {error ? <p role="alert" className="text-sm text-[var(--primary)]">{error}</p> : null}
+            {message ? <p aria-live="polite" className="text-sm text-[var(--primary)]">{message}</p> : null}
 
-            <div className="flex flex-wrap items-center gap-3">
-              <button type="submit" className="rounded-xl px-4 py-2 text-sm font-semibold transition" style={{ background: "var(--primary)", color: "var(--button-text)" }}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <button type="submit" className="min-h-12 rounded-xl px-4 py-3 text-sm font-semibold transition sm:min-h-0 sm:py-2" style={{ background: "var(--primary)", color: "var(--button-text)" }}>
                 Submit rating
               </button>
-              <Link href="/" className="text-sm text-[var(--text-muted)] hover:opacity-80">Cancel</Link>
+              <Link href="/" className="inline-flex min-h-11 items-center justify-center text-sm text-[var(--text-muted)] hover:opacity-80 sm:min-h-0">Cancel</Link>
             </div>
           </form>
         </Panel>

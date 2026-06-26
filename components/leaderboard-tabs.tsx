@@ -71,7 +71,7 @@ export function LeaderboardTabs({
       <button
         type="button"
         onClick={onToggleFilters}
-        className="flex h-10 w-10 items-center justify-center rounded-xl border transition hover:opacity-80"
+      className="flex h-11 w-11 items-center justify-center rounded-xl border transition hover:opacity-80"
         style={{
           borderColor: "var(--border)",
           background: "var(--surface-muted)",
@@ -112,7 +112,7 @@ function TabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition ${active ? "shadow-[0_6px_20px_var(--shadow)]" : ""}`}
+      className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition ${active ? "shadow-[0_6px_20px_var(--shadow)]" : ""}`}
       style={
         active
           ? { background: "var(--primary)", color: "#ffffff" }

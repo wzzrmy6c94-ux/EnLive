@@ -173,7 +173,7 @@ export function QrCodeGenerator({
           type="button"
           onClick={() => { void generate(); }}
           disabled={loading}
-          className="rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+          className="min-h-11 rounded-xl px-4 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
           style={{ background: "var(--primary)", color: "var(--button-text)" }}
         >
           {loading ? "Generating..." : qr ? "Regenerate QR" : "Generate QR"}
@@ -182,7 +182,7 @@ export function QrCodeGenerator({
           <button
             type="button"
             onClick={() => { void copyLink(); }}
-            className="rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
+            className="min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
             style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
           >
             {copied ? "Copied" : "Copy link"}
@@ -192,7 +192,7 @@ export function QrCodeGenerator({
           <button
             type="button"
             onClick={printQr}
-            className="rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
+            className="min-h-11 rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
             style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
           >
             Print QR
@@ -207,7 +207,7 @@ export function QrCodeGenerator({
           <img
             src={qr.pngDataUrl}
             alt={`Rating QR code for ${qr.target.name}`}
-            className="h-[180px] w-[180px] rounded-xl border bg-white p-2"
+            className="mx-auto h-[180px] w-[180px] rounded-xl border bg-white p-2 sm:mx-0"
             style={{ borderColor: "var(--border)" }}
           />
           <div className="flex flex-col justify-center gap-3">
@@ -223,7 +223,7 @@ export function QrCodeGenerator({
               <a
                 href={qr.pngDataUrl}
                 download={`${downloadName}.png`}
-                className="rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
+                className="inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
                 style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
               >
                 Download PNG
@@ -231,7 +231,7 @@ export function QrCodeGenerator({
               <a
                 href={qr.svgDataUrl}
                 download={`${downloadName}.svg`}
-                className="rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
+                className="inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-80"
                 style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
               >
                 Download SVG

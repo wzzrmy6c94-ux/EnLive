@@ -12,7 +12,7 @@ export function NavLink({
   return (
     <Link
       href={href}
-      className="rounded-full border px-3 py-1.5 text-xs font-medium transition"
+      className="inline-flex min-h-10 items-center rounded-full border px-3 py-1.5 text-xs font-medium transition"
       style={{
         borderColor: "var(--border)",
         background: "var(--surface)",
