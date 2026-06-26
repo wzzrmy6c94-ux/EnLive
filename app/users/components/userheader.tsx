@@ -19,6 +19,7 @@ export function UserHeader({
   hideHeroHeader?: boolean;
 }) {
   const router = useRouter();
+  const isPublicHeader = headerMode === "public";
   const [sessionLabel, setSessionLabel] = useState<string>("Guest");
   const [sessionName, setSessionName] = useState<string>("Guest");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
@@ -68,31 +69,43 @@ export function UserHeader({
           "linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 86%, white 14%), var(--surface))",
       }}
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div
+        className={
+          isPublicHeader
+            ? "flex items-center justify-between gap-2 sm:gap-4"
+            : "flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+        }
+      >
         {!hideHeroHeader ? (
-          <div>
+          <div className="shrink-0">
             <Image
               src={EnliveLogoRed}
               alt="Enlive"
-              height={48}
-              width={144}
-              className="block h-8 w-auto max-w-[8rem] object-contain sm:h-9 sm:max-w-[9rem]"
+              height={60}
+              width={180}
+              className="block h-auto w-[6.5rem] object-contain sm:w-36 md:w-40"
               loading="eager"
             />
           </div>
         ) : (
-          <>
+          <div className="shrink-0">
             <Image
               src={EnliveLogoRed}
               alt="Enlive"
-              height={48}
-              width={144}
-              className="block h-8 w-auto max-w-[8rem] object-contain sm:h-9 sm:max-w-[9rem]"
+              height={60}
+              width={180}
+              className="block h-auto w-[6.5rem] object-contain sm:w-36 md:w-40"
               loading="eager"
             />
-          </>
+          </div>
         )}
-          <div className="flex flex-wrap items-center gap-2 text-sm">
+        <div
+          className={
+            isPublicHeader
+              ? "ml-auto flex shrink-0 items-center justify-end gap-1.5 text-sm sm:gap-2"
+              : "flex flex-wrap items-center gap-2 text-sm"
+          }
+        >
           {headerMode === "public" ? (
             <>
               <NavLink href="/">Leaderboard</NavLink>
