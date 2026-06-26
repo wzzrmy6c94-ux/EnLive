@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { noIndexMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Login",
+  title: "Rating Form",
   ...noIndexMetadata,
 };
 
-export default function LoginAliasPage() {
-  redirect("/admin/auth/login");
+export default function RatingFormLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return children;
 }

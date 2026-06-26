@@ -1,5 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { EnliveShell, Panel } from "@/components/enlive-shell";
+import { publicPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = publicPageMetadata({
+  title: "Contributors",
+  description:
+    "Meet the contributors who helped shape EnLive, the live music ratings and leaderboard platform.",
+  path: "/contributors",
+  keywords: ["EnLive contributors", "EnLive credits", "live music platform team"],
+});
 
 type Contributor = {
   name: string;

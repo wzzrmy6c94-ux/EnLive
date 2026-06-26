@@ -1,6 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { FloatingControls } from "@/components/floating-controls";
+import {
+  defaultSeoKeywords,
+  organizationJsonLd,
+  siteDescription,
+  siteName,
+  siteUrl,
+  websiteJsonLd,
+} from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,17 +22,54 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
-    default: "EnLive",
-    template: "%s | EnLive",
+    default: `${siteName} | Live Music Ratings and Leaderboards`,
+    template: `%s | ${siteName}`,
   },
-  description: "Location-based live music rating and leaderboard",
+  description: siteDescription,
+  keywords: defaultSeoKeywords,
   manifest: "/manifest.webmanifest",
-  applicationName: "EnLive",
+  applicationName: siteName,
+  alternates: {
+    canonical: "/leaderboard",
+  },
+  openGraph: {
+    title: `${siteName} | Live Music Ratings and Leaderboards`,
+    description: siteDescription,
+    url: "/leaderboard",
+    siteName,
+    type: "website",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "EnLive live music leaderboards",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteName} | Live Music Ratings and Leaderboards`,
+    description: siteDescription,
+    images: ["/opengraph-image"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "EnLive",
+    title: siteName,
   },
   formatDetection: {
     telephone: false,
@@ -67,6 +112,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([organizationJsonLd, websiteJsonLd]),
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(() => {

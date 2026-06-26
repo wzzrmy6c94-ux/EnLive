@@ -414,6 +414,35 @@ export async function getLeaderboard(params: { targetType: TargetType; location?
   });
 }
 
+export async function listPublicTargetsForSitemap() {
+  return withDb(async (db) => {
+    const res = await db.query<{
+      id: string;
+      role: TargetType;
+      rating_count: number;
+      last_modified: string;
+    }>(
+      `SELECT
+         id,
+         role,
+         rating_count,
+         COALESCE(last_rating_timestamp, created_at)::text AS last_modified
+       FROM users
+       WHERE role IN ('venue','artist','city')
+         AND COALESCE(settings_json::jsonb #>> '{moderation,status}', 'active') <> 'disabled'
+       ORDER BY rating_count DESC, last_modified DESC, name ASC
+       LIMIT 5000`,
+    );
+
+    return res.rows.map((row) => ({
+      id: row.id,
+      role: row.role,
+      ratingCount: Number(row.rating_count),
+      lastModified: new Date(row.last_modified).toISOString(),
+    }));
+  });
+}
+
 export async function getTargetById(id: string, options: { includeDisabled?: boolean; includeModeration?: boolean } = {}) {
   return withDb(async (db) => {
     const targetRes = await db.query<{
