@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminQrModal } from "@/components/admin-qr-modal";
 import { Panel } from "@/components/enlive-shell";
@@ -31,19 +31,49 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [qrTarget, setQrTarget] = useState<AdminUserRow | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/overview", { cache: "no-store" });
+      const data = (await res.json()) as { users?: AdminUserRow[]; error?: string };
+      if (!res.ok) throw new Error(data.error || "Failed to load users");
+      setUsers(data.users ?? []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch("/api/admin/overview", { cache: "no-store" })
-      .then(async (res) => {
-        const data = (await res.json()) as { users?: AdminUserRow[]; error?: string };
-        if (!res.ok) throw new Error(data.error || "Failed to load users");
-        setUsers(data.users ?? []);
-      })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load users"))
-      .finally(() => setLoading(false));
-  }, []);
+    void loadUsers();
+  }, [loadUsers]);
+
+  async function activateRatingForm(row: AdminUserRow) {
+    setBusyAction(`activate:${row.id}`);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "activateRatingForm", userId: row.id }),
+      });
+      const data = (await res.json()) as { error?: string; name?: string };
+      if (!res.ok) throw new Error(data.error || "Failed to activate rating form");
+      setNotice(`${data.name ?? row.name} rating form activated.`);
+      await loadUsers();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to activate rating form");
+    } finally {
+      setBusyAction(null);
+    }
+  }
 
   return (
     <main className="grid gap-4">
@@ -65,6 +95,7 @@ export default function AdminUsersPage() {
 
       <Panel className="shadow-[0_18px_60px_var(--shadow)]">
         {loading ? <p className="text-sm text-[var(--text-muted)]">Loading…</p> : null}
+        {notice ? <p className="mb-3 text-sm font-medium text-emerald-300">{notice}</p> : null}
         {error ? <p className="text-sm text-[var(--primary)]">{error}</p> : null}
         {!loading && !error ? (
           <div className="overflow-auto rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}>
@@ -168,6 +199,14 @@ export default function AdminUsersPage() {
                                       Print QR
                                     </button>
                                   ) : null}
+                                  {!row.emailVerified ? (
+                                    <ConfirmActionButton
+                                      label="Activate form"
+                                      confirmLabel="Are you sure?"
+                                      disabled={busyAction === `activate:${row.id}`}
+                                      onConfirm={() => void activateRatingForm(row)}
+                                    />
+                                  ) : null}
                                 </div>
                               </div>
                             </div>
@@ -215,5 +254,52 @@ function ModerationBadge({ status }: { status: AdminUserRow["moderation"]["statu
     <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${className}`}>
       {formatModeration(status)}
     </span>
+  );
+}
+
+function ConfirmActionButton({
+  label,
+  confirmLabel,
+  disabled,
+  onConfirm,
+}: {
+  label: string;
+  confirmLabel: string;
+  disabled?: boolean;
+  onConfirm: () => void;
+}) {
+  const [armed, setArmed] = useState(false);
+
+  useEffect(() => {
+    if (!armed) return;
+    const timer = window.setTimeout(() => setArmed(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [armed]);
+
+  useEffect(() => {
+    if (disabled) setArmed(false);
+  }, [disabled]);
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        if (armed) {
+          setArmed(false);
+          onConfirm();
+          return;
+        }
+        setArmed(true);
+      }}
+      className="rounded-xl border px-3 py-2 text-xs font-semibold transition hover:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-45"
+      style={{
+        borderColor: armed ? "rgb(252 211 77 / 0.75)" : "rgb(252 211 77 / 0.35)",
+        background: armed ? "rgb(252 211 77 / 0.18)" : "rgb(252 211 77 / 0.08)",
+        color: "rgb(253 230 138)",
+      }}
+    >
+      {armed ? confirmLabel : label}
+    </button>
   );
 }

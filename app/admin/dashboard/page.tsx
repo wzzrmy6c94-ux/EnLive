@@ -60,6 +60,14 @@ type AdminModerationResponse = {
   moderation?: ProfileModeration;
 };
 
+type AdminActivateRatingFormResponse = {
+  ok?: boolean;
+  error?: string;
+  name?: string;
+  userId?: string;
+  emailVerified?: boolean;
+};
+
 const CATEGORY_LABELS: Record<TargetType, [string, string, string, string]> = {
   venue: [
     "Sound & Technical Experience",
@@ -207,6 +215,27 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function activateRatingForm(target: AdminUserRow) {
+    setBusyAction(`activate:${target.id}`);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "activateRatingForm", userId: target.id }),
+      });
+      const data = (await res.json()) as AdminActivateRatingFormResponse;
+      if (!res.ok) throw new Error(data.error || "Failed to activate rating form");
+      setNotice(`${data.name ?? target.name} rating form activated.`);
+      await Promise.all([loadOverview(), loadRatings(selectedTarget?.id ?? null, deviceFilter)]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to activate rating form");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   return (
     <main className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
       <div className="xl:col-span-2">
@@ -284,6 +313,15 @@ export default function AdminDashboardPage() {
                             >
                               Print QR
                             </button>
+                          ) : null}
+                          {!row.emailVerified ? (
+                            <ConfirmActionButton
+                              label="Activate form"
+                              confirmLabel="Are you sure?"
+                              disabled={busyAction === `activate:${row.id}`}
+                              onConfirm={() => void activateRatingForm(row)}
+                              compact
+                            />
                           ) : null}
                           {row.moderation.status !== "flagged" ? (
                             <button

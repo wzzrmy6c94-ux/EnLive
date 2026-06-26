@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/server/auth";
-import { createManagedUser, setProfileModerationForAdmin } from "@/lib/server/db";
+import { activateProfileRatingFormForAdmin, createManagedUser, setProfileModerationForAdmin } from "@/lib/server/db";
 import { getRequestId, readJsonBody, withRequestId } from "@/lib/server/http";
 import { logInfo, logWarn } from "@/lib/server/log";
 import { sanitizeEmail, sanitizeText } from "@/lib/server/sanitize";
@@ -25,6 +25,16 @@ const adminModerationSchema = z.object({
   status: z.enum(["active", "flagged", "disabled"]),
   reason: z.string().transform(sanitizeText).pipe(z.string().max(200)).optional(),
 });
+
+const adminActivateRatingFormSchema = z.object({
+  action: z.literal("activateRatingForm"),
+  userId: z.string().transform(sanitizeText).pipe(z.string().min(1).max(200)),
+});
+
+const adminPatchSchema = z.discriminatedUnion("action", [
+  adminModerationSchema,
+  adminActivateRatingFormSchema,
+]);
 
 export async function POST(request: NextRequest) {
   const requestId = getRequestId(request);
@@ -67,10 +77,25 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await readJsonBody<unknown>(request).catch(() => null);
-  const parsed = adminModerationSchema.safeParse(body);
+  const parsed = adminPatchSchema.safeParse(body);
   if (!parsed.success) {
     logWarn("admin.users.patch_bad_request", { requestId, adminUserId: session.userId });
-    return withRequestId(NextResponse.json({ error: "Invalid moderation action." }, { status: 400 }), requestId);
+    return withRequestId(NextResponse.json({ error: "Invalid admin action." }, { status: 400 }), requestId);
+  }
+
+  if (parsed.data.action === "activateRatingForm") {
+    const result = await activateProfileRatingFormForAdmin(parsed.data.userId);
+    if (!result.ok) {
+      logWarn("admin.users.activate_rating_form_failed", { requestId, adminUserId: session.userId, reason: result.error });
+      return withRequestId(NextResponse.json({ error: result.error }, { status: 404 }), requestId);
+    }
+
+    logInfo("admin.users.rating_form_activated", {
+      requestId,
+      adminUserId: session.userId,
+      userId: result.userId,
+    });
+    return withRequestId(NextResponse.json(result), requestId);
   }
 
   const result = await setProfileModerationForAdmin({

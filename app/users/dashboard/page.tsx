@@ -128,9 +128,9 @@ export default function UserDashboard() {
             </h2>
             <div className="mt-4 space-y-3">
               {[stats.category1Average, stats.category2Average, stats.category3Average, stats.category4Average]
-                .map((avg, i) => avg !== null && avg !== undefined ? (
-                  <CategoryBar key={i} label={catLabels[i] ?? `Category ${i + 1}`} value={avg} />
-                ) : null)}
+                .map((avg, i) => (
+                  <CategoryBar key={i} label={catLabels[i] ?? `Category ${i + 1}`} value={avg ?? null} />
+                ))}
             </div>
           </Panel>
                 )}
@@ -203,13 +203,15 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   );
 }
 
-function CategoryBar({ label, value }: { label: string; value: number }) {
-  const pct = Math.min(100, Math.max(0, Math.round(value)));
+function CategoryBar({ label, value }: { label: string; value: number | null }) {
+  const pct = value === null ? 0 : Math.min(100, Math.max(0, Math.round(value)));
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
         <span className="text-[var(--text-muted)]">{label}</span>
-        <span className="font-medium text-[var(--foreground)]">{value.toFixed(1)}/100</span>
+        <span className="font-medium text-[var(--foreground)]">
+          {value === null ? <span className="text-[var(--text-muted)]">No data yet</span> : `${value.toFixed(1)}/100`}
+        </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-muted)" }}>
         <div

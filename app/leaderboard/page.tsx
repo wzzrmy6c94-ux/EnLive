@@ -729,7 +729,6 @@ export default function LeaderboardPage() {
                                   selectedTarget.stats.category4Average,
                                 ] as (number | null)[]
                               ).map((avg, idx) => {
-                                if (avg === null) return null;
                                 return (
                                   <CategoryBar
                                     key={idx}
@@ -884,16 +883,16 @@ function CategoryBar({
   max,
 }: {
   label: string;
-  value: number;
+  value: number | null;
   max: number;
 }) {
-  const pct = Math.min(100, Math.round((value / max) * 100));
+  const pct = value === null ? 0 : Math.min(100, Math.round((value / max) * 100));
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
         <span style={{ color: "var(--text-muted)" }}>{label}</span>
         <span className="font-medium" style={{ color: "var(--text-strong)" }}>
-          {value.toFixed(1)}/100
+          {value === null ? "No data yet" : `${value.toFixed(1)}/100`}
         </span>
       </div>
       <div

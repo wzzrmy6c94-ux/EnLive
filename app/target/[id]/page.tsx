@@ -84,14 +84,20 @@ function normalizePublicUrl(value: string) {
   }
 }
 
-function CategoryBar({ label, value }: { label: string; value: number }) {
-  const pct = Math.min(100, Math.max(0, Math.round(value)));
+function CategoryBar({ label, value }: { label: string; value: number | null }) {
+  const pct = value === null ? 0 : Math.min(100, Math.max(0, Math.round(value)));
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
         <span style={{ color: "var(--text-muted)" }}>{label}</span>
         <span className="font-semibold" style={{ color: "var(--foreground)" }}>
-          {value.toFixed(1)} <span style={{ color: "var(--text-muted)" }}>/ 100</span>
+          {value === null ? (
+            <span style={{ color: "var(--text-muted)" }}>No data yet</span>
+          ) : (
+            <>
+              {value.toFixed(1)} <span style={{ color: "var(--text-muted)" }}>/ 100</span>
+            </>
+          )}
         </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-muted)" }}>
@@ -209,13 +215,11 @@ export default function TargetProfilePage() {
     { label: "TikTok", href: target.socialLinks.tiktok },
   ].filter((link): link is { label: string; href: string } => Boolean(link.href));
 
-  const catBars: Array<{ label: string; value: number }> = [
+  const catBars: Array<{ label: string; value: number | null }> = [
     { label: catLabels[0], value: target.stats.category1Average },
     { label: catLabels[1], value: target.stats.category2Average },
     { label: catLabels[2], value: target.stats.category3Average },
-    ...(target.stats.category4Average !== null
-      ? [{ label: catLabels[3], value: target.stats.category4Average }]
-      : []),
+    { label: catLabels[3], value: target.stats.category4Average },
   ];
 
   async function handleSave(e: React.FormEvent) {

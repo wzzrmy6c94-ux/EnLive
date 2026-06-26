@@ -849,6 +849,34 @@ export async function setProfileModerationForAdmin(input: {
   });
 }
 
+export async function activateProfileRatingFormForAdmin(userId: string) {
+  return withDb(async (db) => {
+    const res = await db.query<{
+      id: string;
+      name: string;
+      email: string | null;
+      email_verified_at: string | null;
+    }>(
+      `UPDATE users
+       SET email_verified_at = COALESCE(email_verified_at, now()),
+           email_verification_token_hash = NULL,
+           email_verification_expires_at = NULL
+       WHERE id = $1 AND role IN ('venue','artist','city')
+       RETURNING id, name, email, email_verified_at`,
+      [userId],
+    );
+    const user = res.rows[0];
+    if (!user) return { ok: false as const, error: "Profile not found." };
+    return {
+      ok: true as const,
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      emailVerified: Boolean(user.email_verified_at),
+    };
+  });
+}
+
 export async function listRecentRatingsForAdmin(limit = 20) {
   return withDb(async (db) => {
     const res = await db.query<{
