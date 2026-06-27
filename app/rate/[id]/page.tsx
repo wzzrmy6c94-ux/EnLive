@@ -253,6 +253,25 @@ export default function RatePage() {
               }
             }}
           >
+            <div
+              className="rounded-2xl border p-4 text-sm leading-6"
+              style={{
+                borderColor: "var(--border)",
+                background: "var(--surface-muted)",
+                color: "var(--text-muted)",
+              }}
+            >
+              <p className="font-semibold text-[var(--foreground)]">
+                Enlive ratings are not reviews. They are live performance rankings.
+              </p>
+              <p className="mt-2">
+                Be fair, not polite. A fair 68 is more useful than a polite 95.
+              </p>
+              <p className="mt-2">
+                Most good performances sit between 55 and 80. Save 90+ for rare standout experiences.
+              </p>
+            </div>
+
             {categories.map((category, index) => {
               const key = `c${index + 1}` as keyof RatingValues;
               const value = values[key];
