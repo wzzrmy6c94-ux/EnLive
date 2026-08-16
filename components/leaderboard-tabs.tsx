@@ -18,15 +18,11 @@ export function LeaderboardTabs({
   onToggleFilters
 }: LeaderboardTabsProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-end gap-3 border-b border-[var(--border)]">
       <div
         role="tablist"
         aria-label="Leaderboard category"
-        className="flex flex-1 rounded-xl border p-1"
-        style={{
-          borderColor: "var(--border)",
-          background: "var(--surface-muted)",
-        }}
+        className="flex min-w-0 flex-1"
       >
         <TabButton
           active={activeTab === "artist"}
@@ -71,10 +67,10 @@ export function LeaderboardTabs({
       <button
         type="button"
         onClick={onToggleFilters}
-      className="flex h-11 w-11 items-center justify-center rounded-xl border transition hover:opacity-80"
+      className="mb-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition hover:border-[var(--primary)] hover:text-[var(--primary)]"
         style={{
           borderColor: "var(--border)",
-          background: "var(--surface-muted)",
+          background: "transparent",
           color: "var(--icon-accent)"
         }}
         aria-label="Toggle filters"
@@ -86,7 +82,7 @@ export function LeaderboardTabs({
           strokeWidth="2.5" 
           strokeLinecap="round" 
           strokeLinejoin="round"
-          className={`h-4 w-4 transition-transform duration-300 ${showFilters ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`}
         >
           <path d="m6 9 6 6 6-6"/>
         </svg>
@@ -112,15 +108,16 @@ function TabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition ${active ? "shadow-[0_6px_20px_var(--shadow)]" : ""}`}
+      className={`relative flex min-h-11 flex-1 items-center justify-center gap-2 px-2 py-2 text-xs font-bold uppercase tracking-[0.12em] transition sm:text-sm ${active ? "" : "opacity-65 hover:opacity-100"}`}
       style={
         active
-          ? { background: "var(--primary)", color: "#ffffff" }
+          ? { color: "var(--primary)" }
           : { color: "var(--text-muted)" }
       }
     >
       <span className="h-4 w-4 shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
+      {active ? <span className="absolute inset-x-2 bottom-0 h-0.5 bg-[var(--primary)]" /> : null}
     </button>
   );
 }

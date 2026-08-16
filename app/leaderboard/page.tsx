@@ -197,33 +197,12 @@ export default function LeaderboardPage() {
   const catLabels = CATEGORY_LABELS[activeTab];
 
   // Rank row styles — gold/silver/bronze are intentionally hardcoded;
-  // they are real-world medal colors, not theme colors, and should not invert.
-  const rankRowStyle = (rank: number, i: number): React.CSSProperties => {
-    if (rank === 1) return { background: "rgba(255, 215, 0, 0.10)" };
-    if (rank === 2) return { background: "rgba(192, 192, 192, 0.08)" };
-    if (rank === 3) return { background: "rgba(205, 127, 50, 0.08)" };
-    return {
-      background: i % 2 === 0 ? "var(--surface)" : "var(--surface-muted)",
-    };
-  };
+  const rankRowStyle = (rank: number): React.CSSProperties => rank <= 3
+    ? { background: "color-mix(in srgb, var(--surface-elevated) 88%, var(--primary-tint))" }
+    : { background: "transparent" };
 
   return (
     <>
-      <style jsx global>{`
-        @keyframes pulseRow {
-          0%,
-          100% {
-            box-shadow: inset 0 0 0 1.5px var(--primary);
-          }
-          50% {
-            box-shadow: inset 0 0 0 1.5px var(--primary-light);
-          }
-        }
-        .rank-first {
-          animation: pulseRow 2s infinite ease-in-out;
-        }
-      `}</style>
-
       <div style={{ position: "relative" }}>
         <EqualizerBackground />
         <EnliveShell
@@ -232,10 +211,20 @@ export default function LeaderboardPage() {
           headerMode="public"
           hideHeroHeader
         >
-          <main className="grid gap-6">
+          <main className="grid gap-8 pb-10 pt-7 sm:pt-10">
+            <section className="mx-auto w-full max-w-5xl">
+              <p className="enlive-eyebrow">EnLive / Public index</p>
+              <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h1 className="text-4xl font-black tracking-[-0.055em] text-[var(--text-strong)] sm:text-6xl">Live rankings</h1>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">The live music scene, ranked by the crowd.</p>
+                </div>
+                <p className="enlive-eyebrow hidden pb-1 sm:block">Updated from live audience ratings</p>
+              </div>
+            </section>
             {/* ── Tabs + filters ───────────────────────────────────────── */}
-            <div className="flex flex-col items-center gap-6">
-              <div className="w-full max-w-lg">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+              <div className="w-full max-w-2xl">
                 <LeaderboardTabs
                   activeTab={activeTab}
                   showFilters={showFilters}
@@ -250,16 +239,14 @@ export default function LeaderboardPage() {
 
               {viewMode === "list" && showFilters && (
                 <div
-                  className="flex w-full max-w-2xl flex-col gap-4 rounded-2xl border p-4 transition-all animate-in fade-in slide-in-from-top-2"
+                  className="flex w-full max-w-2xl flex-col gap-4 border-b border-[var(--border)] pb-5"
                   style={{
-                    borderColor: "var(--border)",
-                    background: "var(--surface)",
-                    backdropFilter: "blur(12px)",
+                    background: "transparent",
                   }}
                 >
-                  <div className="flex flex-wrap items-center justify-center gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     {/* Search */}
-                    <div className="relative flex-1 min-w-[200px]">
+                    <div className="relative min-w-0 flex-1">
                       <svg
                         className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
                         style={{ color: "var(--text-muted)" }}
@@ -278,7 +265,7 @@ export default function LeaderboardPage() {
                         placeholder={`Search ${activeTab === "artist" ? "artists" : activeTab === "venue" ? "venues" : "cities"}...`}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-xl border py-2 pl-9 pr-4 text-sm outline-none transition focus:ring-2 focus:ring-[var(--primary)]"
+                        className="w-full rounded-md border py-2.5 pl-9 pr-4 text-sm outline-none transition"
                         style={{
                           borderColor: "var(--border)",
                           background: "var(--surface-elevated)",
@@ -294,13 +281,13 @@ export default function LeaderboardPage() {
                         className="text-xs uppercase tracking-[0.12em]"
                         style={{ color: "var(--text-muted)" }}
                       >
-                        Town:
+                        Location
                       </label>
                       <select
                         id="town-select"
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
-                        className="rounded-lg border px-3 py-1.5 text-sm outline-none cursor-pointer"
+                        className="min-h-10 rounded-md border px-3 py-1.5 text-sm outline-none cursor-pointer"
                         style={{
                           borderColor: "var(--border)",
                           background: "var(--surface-elevated)",
@@ -324,20 +311,17 @@ export default function LeaderboardPage() {
 
             {/* ── List view ────────────────────────────────────────────── */}
             {viewMode === "list" ? (
-              <Panel className="mx-auto w-full max-w-4xl overflow-hidden p-0 shadow-[0_30px_90px_var(--shadow)]">
-                <div className="grid gap-3 p-3 md:hidden">
+              <Panel className="mx-auto w-full max-w-5xl overflow-hidden border-x-0 p-0 shadow-none sm:border-x">
+                <div className="border-b border-[var(--border)] px-4 py-3 sm:px-6">
+                  <span className="enlive-eyebrow">{activeTab === "artist" ? "Artists" : activeTab === "venue" ? "Venues" : "Cities"} / ranked by EnLive score</span>
+                </div>
+                <div className="grid divide-y divide-[var(--border)] md:hidden">
                   {loadingRows ? (
-                    <div className="px-4 py-14 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                      Loading leaderboard…
-                    </div>
+                    <LeaderboardSkeleton />
                   ) : rowsError ? (
-                    <div className="px-4 py-14 text-center text-sm" style={{ color: "var(--danger)" }}>
-                      {rowsError}
-                    </div>
+                    <LeaderboardMessage title="We hit a snag" message="We couldn’t load the rankings right now." action="Try again" onAction={handleLiveRefresh} danger />
                   ) : filteredRows.length === 0 ? (
-                    <div className="px-4 py-14 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                      {searchQuery ? "No matches found for your search." : "No entries found for this category."}
-                    </div>
+                    <LeaderboardMessage title="No rankings found" message={searchQuery ? "Try another search term or location." : "Try another location."} action={(searchQuery || location !== "All") ? "Clear filters" : undefined} onAction={() => { setSearchQuery(""); setLocation("All"); }} />
                   ) : (
                     paginatedRows.map((row, i) => {
                       const rank = (currentPage - 1) * PAGE_SIZE + i + 1;
@@ -350,20 +334,19 @@ export default function LeaderboardPage() {
                             setSelectedId(row.id);
                             setViewMode("profile");
                           }}
-                          className={`min-h-[5.75rem] rounded-2xl border p-4 text-left shadow-[0_10px_28px_var(--shadow)] transition active:scale-[0.99] ${
-                            rank === 1 ? "rank-first" : ""
-                          }`}
+                          className={`grid min-h-28 grid-cols-[2.75rem_1fr_auto] items-center gap-3 px-4 py-5 text-left transition active:bg-[var(--surface-muted)] ${rank <= 3 ? "" : ""}`}
                           style={{
-                            ...rankRowStyle(rank, i),
+                            ...rankRowStyle(rank),
                             borderColor: "var(--border)",
                           }}
                         >
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="contents">
+                            <div className="text-xl font-black tracking-[-0.06em] text-[var(--text-muted)]">{String(rank).padStart(2, "0")}</div>
                             <div className="min-w-0">
-                              <div className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-                                #{rank} · {roleLabel}
+                              <div className="text-[0.68rem] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                                {roleLabel} · {row.ratingCount} ratings
                               </div>
-                              <div className="mt-1 truncate text-base font-semibold" style={{ color: rank === 1 ? "var(--primary)" : "var(--text-strong)" }}>
+                              <div className={`mt-1 truncate font-bold tracking-tight ${rank <= 3 ? "text-xl" : "text-lg"}`} style={{ color: "var(--text-strong)" }}>
                                 {row.name}
                               </div>
                               <div className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
@@ -372,11 +355,11 @@ export default function LeaderboardPage() {
                               </div>
                             </div>
                             <div className="shrink-0 text-right">
-                              <div className="text-xl font-black" style={{ color: rank === 1 ? "var(--primary)" : "var(--text-strong)" }}>
+                              <div className={`font-black tracking-[-0.06em] ${rank <= 3 ? "text-3xl" : "text-2xl"}`} style={{ color: rank === 1 ? "var(--primary)" : "var(--text-strong)" }}>
                                 {row.averageScore.toFixed(2)}
                               </div>
                               <div className="text-[0.65rem] uppercase tracking-[0.12em]" style={{ color: "var(--text-muted)" }}>
-                                Points
+                                EnLive score
                               </div>
                             </div>
                           </div>
@@ -386,9 +369,9 @@ export default function LeaderboardPage() {
                   )}
                 </div>
 
-                <div className="hidden overflow-x-auto md:block">
+                <div className="hidden md:block">
                   {(() => {
-                    const totalCols = activeTab === "artist" ? 7 : 6;
+                    const totalCols = activeTab === "artist" ? 6 : 5;
                     return (
                       <table className="w-full border-collapse text-left">
                         <thead>
@@ -397,15 +380,11 @@ export default function LeaderboardPage() {
                             style={{ borderColor: "var(--border)" }}
                           >
                             <th
-                              className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.16em]"
+                              className="w-20 px-6 py-4 text-xs font-semibold uppercase tracking-[0.16em]"
                               style={{ color: "var(--text-muted)" }}
                             >
                               Rank
                             </th>
-                            <th
-                              className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.16em]"
-                              style={{ color: "var(--text-muted)" }}
-                            ></th>
                             <th
                               className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.16em]"
                               style={{ color: "var(--text-muted)" }}
@@ -426,12 +405,13 @@ export default function LeaderboardPage() {
                             >
                               {activeTab === "city" ? "Country" : "City"}
                             </th>
+                            <th className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>Ratings</th>
 
                             <th
                               className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-[0.16em]"
                               style={{ color: "var(--text-muted)" }}
                             >
-                              Points
+                              EnLive score
                             </th>
                           </tr>
                         </thead>
@@ -440,33 +420,23 @@ export default function LeaderboardPage() {
                             <tr>
                               <td
                                 colSpan={totalCols}
-                                className="px-6 py-20 text-center text-sm"
+                                className="px-6 py-8"
                                 style={{ color: "var(--text-muted)" }}
-                              >
-                                Loading leaderboard…
-                              </td>
+                              ><LeaderboardSkeleton /></td>
                             </tr>
                           ) : rowsError ? (
                             <tr>
                               <td
                                 colSpan={totalCols}
-                                className="px-6 py-20 text-center text-sm"
-                                style={{ color: "var(--danger)" }}
-                              >
-                                {rowsError}
-                              </td>
+                                className="px-6 py-8"
+                              ><LeaderboardMessage title="We hit a snag" message="We couldn’t load the rankings right now." action="Try again" onAction={handleLiveRefresh} danger /></td>
                             </tr>
                           ) : filteredRows.length === 0 ? (
                             <tr>
                               <td
                                 colSpan={totalCols}
-                                className="px-6 py-20 text-center text-sm"
-                                style={{ color: "var(--text-muted)" }}
-                              >
-                                {searchQuery
-                                  ? "No matches found for your search."
-                                  : "No entries found for this category."}
-                              </td>
+                                className="px-6 py-8"
+                              ><LeaderboardMessage title="No rankings found" message={searchQuery ? "Try another search term or location." : "Try another location."} action={(searchQuery || location !== "All") ? "Clear filters" : undefined} onAction={() => { setSearchQuery(""); setLocation("All"); }} /></td>
                             </tr>
                           ) : (
                             paginatedRows.map((row, i) => {
@@ -476,21 +446,17 @@ export default function LeaderboardPage() {
                                 <tr
                                   key={row.id}
                                   className={`group border-b transition-colors hover:bg-[var(--surface-muted)] ${
-                                    rank === 1
-                                      ? "rank-first font-black"
-                                      : rank <= 3
-                                        ? "font-bold"
-                                        : "font-normal"
+                                    rank <= 3 ? "font-bold" : "font-normal"
                                   }`}
                                   style={{
-                                    ...rankRowStyle(rank, i),
+                                    ...rankRowStyle(rank),
                                     borderColor: "var(--border)",
                                   }}
                                 >
                                   {/* Rank */}
-                                  <td className="px-6 py-3">
+                                  <td className="px-6 py-5">
                                     <span
-                                      className="text-sm"
+                                      className="text-xl font-black tracking-[-0.06em]"
                                       style={{
                                         color:
                                           rank === 1
@@ -498,37 +464,12 @@ export default function LeaderboardPage() {
                                             : "var(--text-strong)",
                                       }}
                                     >
-                                      #{rank}
+                                      {String(rank).padStart(2, "0")}
                                     </span>
                                   </td>
 
-                                  {/* Avatar */}
-                                  <td className="px-6 py-3">
-                                    <div
-                                      className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold"
-                                      style={{
-                                        background:
-                                          rank === 1
-                                            ? "var(--primary)"
-                                            : "var(--surface-strong)",
-                                        border: "1px solid var(--border)",
-                                        color:
-                                          rank === 1
-                                            ? "var(--button-text)"
-                                            : "var(--primary)",
-                                      }}
-                                    >
-                                      {row.name
-                                        .split(" ")
-                                        .slice(0, 2)
-                                        .map((p) => p[0])
-                                        .join("")
-                                        .toUpperCase()}
-                                    </div>
-                                  </td>
-
                                   {/* Name */}
-                                  <td className="px-6 py-3">
+                                  <td className="px-6 py-5">
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -538,7 +479,7 @@ export default function LeaderboardPage() {
                                       className="text-left transition"
                                     >
                                       <span
-                                        className="block text-sm group-hover:text-[var(--primary)]"
+                                        className={`block tracking-tight group-hover:text-[var(--primary)] ${rank <= 3 ? "text-xl" : "text-base"}`}
                                         style={{
                                           color:
                                             rank === 1
@@ -553,7 +494,7 @@ export default function LeaderboardPage() {
 
                                   {/* Genre (artist only) */}
                                   {activeTab === "artist" && (
-                                    <td className="px-6 py-3">
+                                    <td className="px-6 py-5">
                                       <span
                                         className="text-sm"
                                         style={{ color: "var(--text-muted)" }}
@@ -564,7 +505,7 @@ export default function LeaderboardPage() {
                                   )}
 
                                   {/* Location */}
-                                  <td className="px-6 py-3">
+                                  <td className="px-6 py-5">
                                     <span
                                       className="text-sm"
                                       style={{ color: "var(--text-muted)" }}
@@ -574,14 +515,12 @@ export default function LeaderboardPage() {
                                         : row.location}
                                     </span>
                                   </td>
-
-                                  {/* Rating count */}
-
+                                  <td className="px-6 py-5 text-sm text-[var(--text-muted)]">{row.ratingCount}</td>
 
                                   {/* Score */}
-                                  <td className="px-6 py-3 text-right">
+                                  <td className="px-6 py-5 text-right">
                                     <span
-                                      className="text-sm"
+                                      className={`font-black tracking-[-0.06em] ${rank <= 3 ? "text-3xl" : "text-2xl"}`}
                                       style={{
                                         color:
                                           rank === 1
@@ -866,6 +805,27 @@ export default function LeaderboardPage() {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+function LeaderboardSkeleton() {
+  return (
+    <div className="space-y-3 px-4 py-6" aria-label="Loading rankings" role="status">
+      {[0, 1, 2, 3].map((row) => <div key={row} className="grid grid-cols-[2.75rem_1fr_4rem] items-center gap-3 py-3">
+        <span className="h-5 w-7 animate-pulse rounded bg-[var(--surface-muted)]" />
+        <span className="block space-y-2"><span className="block h-4 w-2/5 animate-pulse rounded bg-[var(--surface-muted)]" /><span className="block h-3 w-1/3 animate-pulse rounded bg-[var(--surface-muted)]" /></span>
+        <span className="h-8 animate-pulse rounded bg-[var(--surface-muted)]" />
+      </div>)}
+      <span className="sr-only">Loading rankings</span>
+    </div>
+  );
+}
+
+function LeaderboardMessage({ title, message, action, onAction, danger = false }: { title: string; message: string; action?: string; onAction: () => void; danger?: boolean }) {
+  return <div className="px-4 py-14 text-center">
+    <p className="enlive-eyebrow" style={{ color: danger ? "var(--danger)" : undefined }}>{title}</p>
+    <p className="mt-3 text-sm text-[var(--text-secondary)]">{message}</p>
+    {action ? <button type="button" onClick={onAction} className="mt-5 min-h-10 border-b border-[var(--primary)] px-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">{action}</button> : null}
+  </div>;
+}
 
 function StatCard({
   label,

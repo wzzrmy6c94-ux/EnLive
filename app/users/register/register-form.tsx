@@ -155,7 +155,7 @@ function RegisterFormInner() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
+      className="enlive-auth min-h-screen flex items-center justify-center px-4 py-8"
       style={{
         position: "relative",
         background:
@@ -164,7 +164,7 @@ function RegisterFormInner() {
     >
       <EqualizerBackground />
       <div
-        className="w-full max-w-3xl rounded-3xl border p-8 shadow-[0_30px_90px_var(--shadow)] backdrop-blur"
+        className="enlive-auth-panel w-full max-w-3xl border p-6 sm:p-8"
         style={{
           position: "relative",
           zIndex: 10,
@@ -173,9 +173,9 @@ function RegisterFormInner() {
             "linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 86%, white 14%), var(--surface))",
         }}
       >
-        <h1 className="pb-3 text-xl font-semibold tracking-tight text-[var(--foreground)] text-center">
-          Create your EnLive account
-        </h1>
+        <p className="enlive-eyebrow">EnLive account</p>
+        <h1 className="pb-2 pt-3 text-3xl font-black tracking-[-0.05em] text-[var(--text-strong)]">Create your account</h1>
+        <p className="mb-7 text-sm text-[var(--text-secondary)]">Set up your artist or venue presence on EnLive.</p>
 
         {verificationUrl ? (
           <div
@@ -545,13 +545,13 @@ function RegisterFormInner() {
           </div>
 
           {error ? (
-            <p className="text-sm text-[var(--primary)]">{error}</p>
+            <p role="alert" className="border-l-2 border-[var(--danger)] pl-3 text-sm text-[var(--danger)]">{error}</p>
           ) : null}
 
           <button
             type="submit"
             disabled={!canSubmit}
-            className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-md px-4 py-3 text-sm font-bold transition hover:opacity-90 disabled:opacity-50"
             style={{
               background: "var(--primary)",
               color: "var(--button-text)",

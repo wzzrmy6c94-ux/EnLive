@@ -87,10 +87,10 @@ function normalizePublicUrl(value: string) {
 function CategoryBar({ label, value }: { label: string; value: number | null }) {
   const pct = value === null ? 0 : Math.min(100, Math.max(0, Math.round(value)));
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-xs">
-        <span style={{ color: "var(--text-muted)" }}>{label}</span>
-        <span className="font-semibold" style={{ color: "var(--foreground)" }}>
+    <div className="py-3 first:pt-0 last:pb-0">
+      <div className="mb-2 flex items-start justify-between gap-4 text-xs">
+        <span className="max-w-[75%] font-medium" style={{ color: "var(--text-secondary)" }}>{label}</span>
+        <span className="shrink-0 font-bold" style={{ color: "var(--foreground)" }}>
           {value === null ? (
             <span style={{ color: "var(--text-muted)" }}>No data yet</span>
           ) : (
@@ -100,10 +100,10 @@ function CategoryBar({ label, value }: { label: string; value: number | null }) 
           )}
         </span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-muted)" }}>
+      <div className="h-1 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-muted)" }}>
         <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, background: "linear-gradient(90deg, var(--primary), var(--secondary))" }}
+          className="h-full rounded-full transition-[width] duration-500"
+          style={{ width: `${pct}%`, background: "var(--primary)" }}
         />
       </div>
     </div>
@@ -117,6 +117,15 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
       {children}
     </label>
   );
+}
+
+function ProfileSkeleton() {
+  return <main className="mx-auto w-full max-w-5xl space-y-8 pt-10" aria-label="Loading profile" role="status">
+    <div className="h-4 w-28 animate-pulse rounded bg-[var(--surface-muted)]" />
+    <section className="border-y border-[var(--border)] py-10"><div className="h-20 w-20 animate-pulse rounded-md bg-[var(--surface-muted)]" /><div className="mt-8 h-12 max-w-md animate-pulse rounded bg-[var(--surface-muted)]" /><div className="mt-3 h-4 w-48 animate-pulse rounded bg-[var(--surface-muted)]" /></section>
+    <div className="grid gap-8 lg:grid-cols-[1.35fr_0.65fr]"><div className="space-y-5 border-t border-[var(--border)] pt-5">{[0, 1, 2, 3].map((row) => <div key={row} className="h-10 animate-pulse rounded bg-[var(--surface-muted)]" />)}</div><div className="h-32 animate-pulse border-t border-[var(--border)] bg-[var(--surface-muted)]" /></div>
+    <span className="sr-only">Loading profile</span>
+  </main>;
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
@@ -182,9 +191,7 @@ export default function TargetProfilePage() {
   if (loading) {
     return (
       <EnliveShell title="Profile" hideHeroHeader>
-        <div className="flex h-64 items-center justify-center">
-          <span className="text-sm" style={{ color: "var(--text-muted)" }}>Loading…</span>
-        </div>
+        <ProfileSkeleton />
       </EnliveShell>
     );
   }
@@ -192,10 +199,11 @@ export default function TargetProfilePage() {
   if (!target) {
     return (
       <EnliveShell title="Profile" hideHeroHeader>
-        <Panel className="mx-auto max-w-sm text-center">
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>{error ?? "Profile not found."}</p>
-          <Link href="/" className="mt-3 inline-block text-sm hover:opacity-80" style={{ color: "var(--primary)" }}>
-            ← Back to leaderboard
+        <Panel className="mx-auto mt-16 max-w-md text-center">
+          <p className="enlive-eyebrow" style={{ color: "var(--danger)" }}>Profile unavailable</p>
+          <p className="mt-3 text-sm" style={{ color: "var(--text-secondary)" }}>{error ? "We couldn’t load this profile right now." : "This profile could not be found."}</p>
+          <Link href="/" className="mt-5 inline-block border-b border-[var(--primary)] pb-1 text-xs font-bold uppercase tracking-[0.12em]" style={{ color: "var(--primary)" }}>
+            Back to leaderboard
           </Link>
         </Panel>
       </EnliveShell>
@@ -281,48 +289,24 @@ export default function TargetProfilePage() {
 
   return (
     <EnliveShell title={target.name} subtitle={`${roleLabel} · ${target.location}`} hideHeroHeader>
-      <main className="mx-auto w-full max-w-3xl space-y-4">
+      <main className="mx-auto w-full max-w-5xl space-y-8 pb-10 pt-6 sm:pt-10">
+        <Link href="/" className="inline-flex min-h-9 items-center text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] transition hover:text-[var(--primary)]">
+          ← Live rankings
+        </Link>
 
         {/* ── Hero card ────────────────────────────────────────────────────── */}
         <div
-          className="overflow-hidden rounded-2xl border shadow-[0_8px_32px_var(--shadow)]"
+          className="relative overflow-hidden border-y border-[var(--border)] py-6 sm:py-10"
           style={{
-            borderColor: "var(--border)",
-            background: "linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 88%, white 12%), var(--surface))",
+            background: "radial-gradient(circle at 82% 18%, var(--hero-glow), transparent 30%), transparent",
           }}
         >
-          {/* Cover banner */}
-        <div
-          className="relative h-40 w-full overflow-hidden"
-          style={{
-            backgroundImage: `
-              radial-gradient(ellipse 50% 40% at 20% 30%, rgba(255,255,255,0.1) 0%, transparent 50%),
-              radial-gradient(ellipse 30% 25% at 80% 70%, rgba(255,255,255,0.05) 0%, transparent 50%),
-              linear-gradient(135deg, var(--base-deep) 0%, var(--primary) 45%, var(--secondary) 75%, var(--accent) 100%)
-            `,
-          }}
-        >
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)",
-                backgroundSize: "40px 40px",
-              }}
-            />
-          </div>
-
-          {/* Avatar + action row */}
-          <div className="px-6 pb-6">
-            <div className="flex items-end justify-between" style={{ marginTop: "-40px" }}>
+          <div className="relative px-5 sm:px-8">
+            <div className="flex items-start justify-between gap-4">
               <div
-                className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 text-xl font-bold shadow-2xl select-none ring-2 ring-white/20 sm:h-24 sm:w-24 sm:text-2xl"
+                className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-md border text-lg font-black select-none sm:h-20 sm:w-20 sm:text-xl"
                 style={{
-                  borderColor: "var(--surface)",
-                  background: `
-                    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                    linear-gradient(135deg, var(--primary), var(--secondary))
-                  `,
-                  color: "var(--button-text)",
+                  borderColor: "var(--border-strong)", background: "var(--surface-elevated)", color: "var(--primary)",
                 }}
               >
                 {initials}
@@ -332,7 +316,7 @@ export default function TargetProfilePage() {
                 <button
                   type="button"
                   onClick={() => { setEditing(true); setSaveSuccess(false); setSaveError(null); }}
-                  className="flex min-h-10 items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                  className="flex min-h-10 items-center gap-1.5 rounded-md border px-4 py-1.5 text-xs font-semibold transition hover:opacity-80"
                   style={{ borderColor: "var(--primary)", color: "var(--primary)", background: "transparent" }}
                 >
                   <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
@@ -345,7 +329,7 @@ export default function TargetProfilePage() {
                 <button
                   type="button"
                   onClick={cancelEdit}
-                  className="min-h-10 rounded-full border px-4 py-1.5 text-xs font-semibold transition hover:opacity-80"
+                  className="min-h-10 rounded-md border px-4 py-1.5 text-xs font-semibold transition hover:opacity-80"
                   style={{ borderColor: "var(--border)", color: "var(--text-muted)", background: "transparent" }}
                 >
                   Cancel
@@ -354,9 +338,11 @@ export default function TargetProfilePage() {
             </div>
 
             {/* Identity */}
-            <div className="mt-3 space-y-1">
+            <div className="mt-7 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div className="space-y-2">
+              <p className="enlive-eyebrow">{roleLabel}{target.genre ? ` · ${target.genre}` : ""}</p>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="break-words text-2xl font-black tracking-tight bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text -webkit-background-clip-text bg-[length:200%_200%] animate-[shimmer_3s_ease-in-out_infinite] md:text-3xl">
+                <h1 className="break-words text-4xl font-black tracking-[-0.055em] text-[var(--text-strong)] sm:text-6xl">
                   {target.name}
                 </h1>
                 {target.enliveUid && (
@@ -368,9 +354,6 @@ export default function TargetProfilePage() {
                   </span>
                 )}
               </div>
-              <p className="text-sm font-medium" style={{ color: "var(--primary)" }}>
-                {roleLabel}{target.genre ? ` · ${target.genre}` : ""}
-              </p>
               {cityRankLabel ? (
                 <div>
                   <span
@@ -416,26 +399,32 @@ export default function TargetProfilePage() {
                   ))}
                 </div>
               ) : null}
-              {target.bio ? (
-                <p className="pt-1 text-sm italic leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                  {target.bio}
-                </p>
-              ) : isOwner && !editing ? (
-                <p className="pt-1 text-xs" style={{ color: "var(--text-muted)", opacity: 0.6 }}>
-                  No bio yet. Click "Edit profile" to add one.
-                </p>
-              ) : null}
+              </div>
+              <div className="border-l border-[var(--border)] pl-5 text-left lg:min-w-44">
+                <p className="enlive-eyebrow">EnLive score</p>
+                <div className="mt-1 text-5xl font-black tracking-[-0.07em] text-[var(--primary)] sm:text-6xl">{target.stats.averageScore.toFixed(1)}</div>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">{target.stats.totalRatings} {target.stats.totalRatings === 1 ? "rating" : "ratings"}</p>
+              </div>
             </div>
           </div>
         </div>
 
+        {target.bio ? (
+          <section className="mx-auto max-w-3xl border-t border-[var(--border)] pt-6">
+            <h2 className="enlive-eyebrow">About</h2>
+            <p className="mt-4 text-base leading-8 text-[var(--text-secondary)]">{target.bio}</p>
+          </section>
+        ) : isOwner && !editing ? (
+          <p className="text-xs text-[var(--text-muted)]">No bio yet. Use Edit profile to add one.</p>
+        ) : null}
+
         {/* ── Stats + Rate ─────────────────────────────────────────────────── */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-8 lg:grid-cols-[1.35fr_0.65fr]">
 
           {/* Stats */}
-          <Panel>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
-              Rating Overview
+          <section className="border-t border-[var(--border)] pt-5">
+            <h2 className="enlive-eyebrow">
+              EnLive score breakdown
             </h2>
             {target.stats.totalRatings === 0 ? (
               <p className="mt-3 text-sm" style={{ color: "var(--text-muted)" }}>
@@ -443,23 +432,17 @@ export default function TargetProfilePage() {
               </p>
             ) : (
               <>
-                <div className="mt-3 flex items-baseline gap-1.5">
-                  <span className="text-5xl md:text-6xl font-black bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] bg-clip-text -webkit-background-clip-text bg-[length:200%_200%] animate-[shimmer_2s_ease-in-out_infinite] tracking-[-0.05em] drop-shadow-lg">
-                    {target.stats.averageScore.toFixed(1)}
-                  </span>
-                  <span className="text-lg" style={{ color: "var(--text-muted)" }}>/100</span>
-                </div>
-                <div className="space-y-3">
+                <div className="mt-5 divide-y divide-[var(--border)]">
                   {catBars.map(({ label, value }) => (
                     <CategoryBar key={label} label={label} value={value} />
                   ))}
                 </div>
               </>
             )}
-          </Panel>
+          </section>
 
           {/* Share */}
-          <Panel className="flex flex-col gap-4">
+          <aside className="flex flex-col gap-4 border-t border-[var(--border)] pt-5">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>
                 Share Profile
@@ -484,7 +467,7 @@ export default function TargetProfilePage() {
               </svg>
               {copied ? "Link copied!" : "Copy profile link"}
             </button>
-          </Panel>
+          </aside>
         </div>
 
         {isOwner && (

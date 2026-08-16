@@ -57,7 +57,7 @@ function VerifyEmailPanel() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
+      className="enlive-auth min-h-screen flex items-center justify-center px-4 py-8"
       style={{
         position: "relative",
         background:
@@ -66,7 +66,7 @@ function VerifyEmailPanel() {
     >
       <EqualizerBackground />
       <main
-        className="w-full max-w-sm rounded-3xl border p-8 text-center shadow-[0_30px_90px_var(--shadow)] backdrop-blur"
+        className="enlive-auth-panel w-full max-w-sm border p-6 text-center sm:p-8"
         style={{
           position: "relative",
           zIndex: 10,
@@ -75,7 +75,8 @@ function VerifyEmailPanel() {
             "linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 86%, white 14%), var(--surface))",
         }}
       >
-        <h1 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">
+        <p className="enlive-eyebrow">EnLive account</p>
+        <h1 className="mt-3 text-3xl font-black tracking-[-0.05em] text-[var(--text-strong)]">
           {status === "loading" ? "Verifying" : status === "success" ? "Verified" : "Verification failed"}
         </h1>
         <p className="mt-3 text-sm text-[var(--text-muted)]">{message}</p>

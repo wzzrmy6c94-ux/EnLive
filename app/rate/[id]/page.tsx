@@ -49,6 +49,14 @@ function sliderPercent(value: number) {
   return ((value - SCORE_SCALE.min) / (SCORE_SCALE.max - SCORE_SCALE.min)) * 100;
 }
 
+function RatingSkeleton() {
+  return <main className="mx-auto w-full max-w-3xl space-y-8 py-10" aria-label="Loading rating form" role="status">
+    <section className="border-b border-[var(--border)] pb-7"><div className="h-4 w-24 animate-pulse rounded bg-[var(--surface-muted)]" /><div className="mt-4 h-12 w-2/3 animate-pulse rounded bg-[var(--surface-muted)]" /><div className="mt-3 h-4 w-40 animate-pulse rounded bg-[var(--surface-muted)]" /></section>
+    <section className="space-y-6">{[0, 1, 2, 3].map((row) => <div key={row} className="border-b border-[var(--border)] py-6"><div className="flex justify-between"><div className="h-5 w-48 animate-pulse rounded bg-[var(--surface-muted)]" /><div className="h-8 w-12 animate-pulse rounded bg-[var(--surface-muted)]" /></div><div className="mt-6 h-2 animate-pulse rounded bg-[var(--surface-muted)]" /></div>)}</section>
+    <span className="sr-only">Loading rating form</span>
+  </main>;
+}
+
 export default function RatePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -128,9 +136,10 @@ export default function RatePage() {
   if (qrError) {
     return (
       <EnliveShell title="Invalid QR" subtitle="" headerMode="public">
-        <Panel className="shadow-[0_18px_60px_var(--shadow)]">
-          <p className="text-sm text-[var(--primary)]">{qrError}</p>
-          <Link href="/" className="mt-3 inline-flex text-sm text-[var(--primary)] hover:opacity-80">Back to home</Link>
+        <Panel className="mx-auto mt-12 max-w-md text-center shadow-none">
+          <p className="enlive-eyebrow text-[var(--danger)]">This link is unavailable</p>
+          <p className="mt-3 text-sm text-[var(--text-secondary)]">This rating link can’t be used right now.</p>
+          <Link href="/" className="mt-5 inline-flex border-b border-[var(--primary)] pb-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">Back to EnLive</Link>
         </Panel>
       </EnliveShell>
     );
@@ -139,7 +148,7 @@ export default function RatePage() {
   if (loading) {
     return (
       <EnliveShell title="Rating Link" subtitle="Public QR submission form" headerMode="public">
-        <Panel><p className="text-sm text-[var(--text-muted)]">Loading target…</p></Panel>
+        <RatingSkeleton />
       </EnliveShell>
     );
   }
@@ -147,9 +156,10 @@ export default function RatePage() {
   if (!target) {
     return (
       <EnliveShell title="Rating Link" subtitle="Public QR submission form" headerMode="public">
-        <Panel className="shadow-[0_18px_60px_var(--shadow)]">
-          <p className="text-sm text-[var(--text-muted)]">{error || "Target not found."}</p>
-          <Link href="/" className="mt-3 inline-flex text-sm text-[var(--primary)] hover:opacity-80">Back to leaderboard</Link>
+        <Panel className="mx-auto mt-12 max-w-md text-center shadow-none">
+          <p className="enlive-eyebrow text-[var(--danger)]">Rating unavailable</p>
+          <p className="mt-3 text-sm text-[var(--text-secondary)]">We couldn’t load this rating form right now.</p>
+          <Link href="/" className="mt-5 inline-flex border-b border-[var(--primary)] pb-1 text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">Back to leaderboard</Link>
         </Panel>
       </EnliveShell>
     );
@@ -162,8 +172,8 @@ export default function RatePage() {
         subtitle={`${target.role === "venue" ? "Venue" : "Artist/Band"} • ${target.location} • Generate QR for ratings`}
         headerMode="private"
       >
-        <main className="flex justify-center py-4 sm:py-8">
-          <Panel className="w-full max-w-md space-y-4">
+        <main className="flex justify-center py-8 sm:py-12">
+          <Panel className="w-full max-w-md space-y-5 shadow-none">
             <div className="text-center">
               <h2 className="text-lg font-bold" style={{ color: "var(--foreground)" }}>QR Code Generator</h2>
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>{target.name}</p>
@@ -184,8 +194,8 @@ export default function RatePage() {
         subtitle={`${target.role === "venue" ? "Venue" : "Artist/Band"} • ${target.location} • Public QR submission form`}
         headerMode="public"
       >
-        <main className="flex justify-center py-4 sm:py-8">
-          <Panel className="w-full max-w-md space-y-4 text-center">
+        <main className="flex justify-center py-8 sm:py-12">
+          <Panel className="w-full max-w-md space-y-4 text-center shadow-none">
             <div>
               <div className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">Rating form inactive</div>
               <h2 className="mt-2 text-xl font-semibold text-[var(--foreground)]">{target.name}</h2>
@@ -210,12 +220,10 @@ export default function RatePage() {
       subtitle={`${target.role === "venue" ? "Venue" : "Artist/Band"} • ${target.location} • Public QR submission form`}
       headerMode="public"
     >
-      {/* Center the rating form */}
-      <main className="flex justify-center py-4 sm:py-8">
-        <Panel className="w-full max-w-lg">
-          <form
-            className="space-y-4"
-            onSubmit={async (e) => {
+      <main className="mx-auto w-full max-w-3xl py-6 sm:py-10">
+        <form
+          className="space-y-8"
+          onSubmit={async (e) => {
               e.preventDefault();
               setError(null);
               setMessage(null);
@@ -253,26 +261,23 @@ export default function RatePage() {
               }
             }}
           >
-            <div
-              className="rounded-2xl border p-4 text-sm leading-6"
-              style={{
-                borderColor: "var(--border)",
-                background: "var(--surface-muted)",
-                color: "var(--text-muted)",
-              }}
-            >
-              <p className="font-semibold text-[var(--foreground)]">
-                Enlive ratings are not reviews. They are live performance rankings.
-              </p>
-              <p className="mt-2">
-                Be fair, not polite. A fair 68 is more useful than a polite 95.
-              </p>
-              <p className="mt-2">
-                Most good performances sit between 55 and 80. Save 90+ for rare standout experiences.
-              </p>
-            </div>
+            <section className="border-b border-[var(--border)] pb-7">
+              <p className="enlive-eyebrow">Rate {target.role === "venue" ? "venue" : "artist"}</p>
+              <h1 className="mt-3 text-4xl font-black tracking-[-0.055em] text-[var(--text-strong)] sm:text-6xl">{target.name}</h1>
+              <p className="mt-3 text-sm text-[var(--text-secondary)]">{target.role === "venue" ? "Venue" : "Artist / Band"} · {target.location}</p>
+              <div className="mt-6 max-w-2xl border-l-2 border-[var(--primary)] pl-4 text-sm leading-6 text-[var(--text-secondary)]">
+                <p>EnLive ratings are not reviews. They are live performance rankings.</p>
+                <p className="mt-2">Be fair, not polite. A fair 68 is more useful than a polite 95. Save 90+ for rare standout experiences.</p>
+              </div>
+            </section>
 
-            {categories.map((category, index) => {
+            <section>
+              <div className="flex items-baseline justify-between border-b border-[var(--border)] pb-3">
+                <h2 className="enlive-eyebrow">Your rating</h2>
+                <span className="text-xs text-[var(--text-muted)]">{categories.length} categories</span>
+              </div>
+              <div className="divide-y divide-[var(--border)]">
+              {categories.map((category, index) => {
               const key = `c${index + 1}` as keyof RatingValues;
               const value = values[key];
               const pct = sliderPercent(value);
@@ -280,10 +285,12 @@ export default function RatePage() {
               return (
                 <label
                   key={category.label}
-                  className="block rounded-2xl border p-4 sm:p-5"
-                  style={{ borderColor: "var(--border)", background: "var(--surface-muted)" }}
+                  className="block py-6 first:pt-5 sm:py-7"
                 >
-                  <div className="mb-3 text-sm font-medium text-[var(--foreground)]">{category.label}</div>
+                  <div className="mb-5 flex items-start justify-between gap-4">
+                    <span className="text-base font-bold tracking-tight text-[var(--foreground)]">{category.label}</span>
+                    <output className="min-w-12 text-right text-3xl font-black tracking-[-0.06em] text-[var(--primary)]" aria-label={`${category.label}: ${value}`}>{value}</output>
+                  </div>
                   <input
                     type="range"
                     min={SCORE_SCALE.min}
@@ -295,7 +302,7 @@ export default function RatePage() {
                       const next = Number(e.target.value);
                       setValues((prev) => ({ ...prev, [key]: next }));
                     }}
-                    className="enlive-rating-slider h-6 w-full cursor-pointer rounded-full"
+                    className="enlive-rating-slider h-10 w-full cursor-pointer"
                     style={{
                       background: `linear-gradient(90deg, var(--primary) 0%, var(--primary) ${pct}%, var(--surface-elevated) ${pct}%, var(--surface-elevated) 100%)`,
                     }}
@@ -306,19 +313,20 @@ export default function RatePage() {
                   </div>
                 </label>
               );
-            })}
+              })}
+              </div>
+            </section>
 
-            {error ? <p role="alert" className="text-sm text-[var(--primary)]">{error}</p> : null}
-            {message ? <p aria-live="polite" className="text-sm text-[var(--primary)]">{message}</p> : null}
+            {error ? <p role="alert" className="border-l-2 border-[var(--danger)] pl-3 text-sm text-[var(--danger)]">{error}</p> : null}
+            {message ? <p aria-live="polite" className="border-l-2 border-[var(--success)] pl-3 text-sm text-[var(--success)]">{message}</p> : null}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <button type="submit" className="min-h-12 rounded-xl px-4 py-3 text-sm font-semibold transition sm:min-h-0 sm:py-2" style={{ background: "var(--primary)", color: "var(--button-text)" }}>
+            <div className="flex flex-col gap-3 border-t border-[var(--border)] pt-6 sm:flex-row sm:items-center">
+              <button type="submit" className="min-h-12 rounded-md px-5 py-3 text-sm font-bold transition hover:opacity-90" style={{ background: "var(--primary)", color: "var(--button-text)" }}>
                 Submit rating
               </button>
               <Link href="/" className="inline-flex min-h-11 items-center justify-center text-sm text-[var(--text-muted)] hover:opacity-80 sm:min-h-0">Cancel</Link>
             </div>
-          </form>
-        </Panel>
+        </form>
       </main>
     </EnliveShell>
   );

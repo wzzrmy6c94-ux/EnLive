@@ -12,7 +12,7 @@ function applyTheme(theme: Theme) {
   root.style.colorScheme = theme;
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ variant = "floating" }: { variant?: "floating" | "menu" }) {
   const [theme, setTheme] = useState<Theme>("light");
   const [ready, setReady] = useState(false);
 
@@ -37,6 +37,15 @@ export function ThemeToggle() {
     setTheme(nextTheme);
   }
 
+  if (variant === "menu") {
+    return (
+      <button type="button" onClick={toggleTheme} aria-label={ready ? `Switch to ${theme === "dark" ? "light" : "dark"} theme` : "Toggle theme"} className="enlive-menu-item w-full justify-between">
+        <span>Appearance</span>
+        <span className="text-xs text-[var(--text-muted)]">{ready ? theme : "Theme"}</span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -51,14 +60,7 @@ export function ThemeToggle() {
           ? `Switch to ${theme === "dark" ? "light" : "dark"} theme`
           : "Toggle theme"
       }
-      className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border backdrop-blur transition hover:scale-[1.04] sm:right-6"
-      style={{
-        borderColor: "var(--border-strong)",
-        background:
-          "linear-gradient(180deg, var(--surface-strong), var(--surface))",
-        color: "var(--icon-accent)",
-        boxShadow: "0 18px 45px var(--shadow)",
-      }}
+      className="enlive-utility-button fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-50 sm:right-6"
     >
       {ready ? <ThemeIcon theme={theme} /> : <ToggleIcon />}
     </button>

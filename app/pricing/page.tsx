@@ -2,6 +2,7 @@
 import React from 'react';
 import { PlanSelector } from '@/components/PlanSelector';
 import { useRouter } from 'next/navigation';
+import { EnliveShell } from '@/components/enlive-shell';
 
 export default function PricingPage() {
   const router = useRouter();
@@ -23,10 +24,14 @@ export default function PricingPage() {
     }
   };
 
-  return (
-    <main className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Choose a Subscription Plan</h1>
+  return <EnliveShell title="Subscription Plans" headerMode="public" hideHeroHeader>
+    <main className="mx-auto w-full max-w-5xl py-7 sm:py-10">
+      <section className="border-b border-[var(--border)] pb-7">
+        <p className="enlive-eyebrow">EnLive for artists & venues</p>
+        <h1 className="mt-3 text-4xl font-black tracking-[-0.055em] text-[var(--text-strong)] sm:text-6xl">Choose your plan</h1>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">Select the EnLive subscription that fits your live music presence.</p>
+      </section>
       <PlanSelector onSelect={handleSelect} />
     </main>
-  );
+  </EnliveShell>;
 }

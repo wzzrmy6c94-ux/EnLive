@@ -30,7 +30,7 @@ function LoginForm() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
+      className="enlive-auth min-h-screen flex items-center justify-center px-4 py-8"
       style={{
         position: "relative",
         background:
@@ -39,7 +39,7 @@ function LoginForm() {
     >
       <EqualizerBackground />
       <div
-        className="w-full max-w-sm rounded-3xl border p-8 shadow-[0_30px_90px_var(--shadow)] backdrop-blur"
+        className="enlive-auth-panel w-full max-w-sm border p-6 sm:p-8"
         style={{
           position: "relative",
           zIndex: 10,
@@ -48,9 +48,9 @@ function LoginForm() {
             "linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 86%, white 14%), var(--surface))",
         }}
       >
-        <h1 className="mb-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">
-          Sign in
-        </h1>
+        <p className="enlive-eyebrow">EnLive account</p>
+        <h1 className="mt-3 text-3xl font-black tracking-[-0.05em] text-[var(--text-strong)]">Sign in</h1>
+        <p className="mb-6 mt-2 text-sm text-[var(--text-secondary)]">Access your EnLive artist or venue profile.</p>
 
         {registered && (
           <div
@@ -206,12 +206,12 @@ function LoginForm() {
             />
           </label>
 
-          {error && <p className="text-sm text-[var(--primary)]">{error}</p>}
+          {error && <p role="alert" className="border-l-2 border-[var(--danger)] pl-3 text-sm text-[var(--danger)]">{error}</p>}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-md px-4 py-3 text-sm font-bold transition hover:opacity-90 disabled:opacity-50"
             style={{
               background: "var(--primary)",
               color: "var(--button-text)",

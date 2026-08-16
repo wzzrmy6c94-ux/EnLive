@@ -17,8 +17,8 @@ export function EnliveShell({
 }) {
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,var(--hero-glow),transparent_28%),linear-gradient(180deg,var(--shell-from),var(--shell-mid)_48%,var(--shell-to))] text-[var(--foreground)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-3 pb-28 pt-4 sm:px-6 sm:py-6 sm:pb-32 lg:px-8">
+    <div className="enlive-shell min-h-screen text-[var(--foreground)]">
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-28 pt-3 sm:px-6 sm:pt-5 lg:px-8">
         <UserHeader
           title={title}
           subtitle={subtitle}
@@ -42,7 +42,7 @@ export function Panel({
 }) {
   return (
     <section
-      className={`rounded-2xl border p-4 backdrop-blur sm:p-5 ${className}`}
+      className={`rounded-xl border p-4 sm:p-5 ${className}`}
       style={{
         borderColor: "var(--border)",
         background:

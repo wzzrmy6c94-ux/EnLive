@@ -2,224 +2,79 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { NavLink } from "@/components/nav-link";
-import EnliveLogoRed from "@/app/assets/enlive-logo-dark.png";
+import { ThemeToggle } from "@/components/theme-toggle";
+import EnliveLogo from "@/app/assets/enlive-logo-dark.png";
 
-export function UserHeader({
-  title,
-  subtitle,
-  headerMode = "private",
-  hideHeroHeader = false,
-}: {
-  title: string;
-  subtitle?: string;
-  headerMode?: "public" | "private";
-  hideHeroHeader?: boolean;
-}) {
+type Session = { id: string; name: string; role: string } | null;
+const explore = ["Leaderboard", "Artists", "Venues", "Cities"];
+
+export function UserHeader({ title, subtitle, headerMode = "private" }: { title: string; subtitle?: string; headerMode?: "public" | "private"; hideHeroHeader?: boolean }) {
   const router = useRouter();
-  const isPublicHeader = headerMode === "public";
-  const [sessionLabel, setSessionLabel] = useState<string>("Guest");
-  const [sessionName, setSessionName] = useState<string>("Guest");
-  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  const [accountOpen, setAccountOpen] = useState(false);
-  const accountRef = useRef<HTMLDivElement | null>(null);
+  const pathname = usePathname();
+  const [session, setSession] = useState<Session>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/auth/session", { cache: "no-store" })
       .then((res) => res.json())
-      .then((data: { user: { id: string; name: string; role: string } | null }) => {
-        if (cancelled) return;
-        setSessionLabel(
-          data.user ? `${data.user.name} (${data.user.role})` : "Guest",
-        );
-        setSessionName(data.user?.name ?? "Guest");
-        setSessionUserId(data.user?.id ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSessionLabel("Guest");
-          setSessionName("Guest");
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((data: { user: Session }) => { if (!cancelled) setSession(data.user); })
+      .catch(() => { if (!cancelled) setSession(null); });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    const onPointerDown = (event: MouseEvent) => {
-      if (!accountRef.current) return;
-      if (!accountRef.current.contains(event.target as Node)) {
-        setAccountOpen(false);
-      }
-    }
-    window.addEventListener("mousedown", onPointerDown);
-    return () => window.removeEventListener("mousedown", onPointerDown);
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  return (
-    <header
-      className={`${hideHeroHeader ? "mb-4" : "mb-6"} relative z-40 overflow-visible rounded-2xl border p-3 shadow-[0_10px_40px_var(--shadow)] backdrop-blur sm:rounded-3xl sm:p-5`}
-      style={{
-        borderColor: "var(--border)",
-        background:
-          "linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 86%, white 14%), var(--surface))",
-      }}
-    >
-      <div
-        className={
-          isPublicHeader
-            ? "flex items-center justify-between gap-2 sm:gap-4"
-            : "flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-        }
-      >
-        {!hideHeroHeader ? (
-          <div className="shrink-0">
-            <Image
-              src={EnliveLogoRed}
-              alt="Enlive"
-              height={60}
-              width={180}
-              className="block h-auto w-[6.5rem] object-contain sm:w-36 md:w-40"
-              loading="eager"
-            />
-          </div>
-        ) : (
-          <div className="shrink-0">
-            <Image
-              src={EnliveLogoRed}
-              alt="Enlive"
-              height={60}
-              width={180}
-              className="block h-auto w-[6.5rem] object-contain sm:w-36 md:w-40"
-              loading="eager"
-            />
-          </div>
-        )}
-        <div
-          className={
-            isPublicHeader
-              ? "ml-auto flex shrink-0 items-center justify-end gap-1.5 text-sm sm:gap-2"
-              : "flex flex-wrap items-center gap-2 text-sm"
-          }
-        >
-          {headerMode === "public" ? (
-            <>
-              <NavLink href="/">Leaderboard</NavLink>
-              <NavLink href="/users/auth/login">Login</NavLink>
-            </>
-          ) : (
-            <>
-              {sessionUserId && (
-                <Link
-                  href={`/target/${sessionUserId}`}
-                  className="flex min-h-10 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition hover:opacity-80"
-                  style={{
-                    borderColor: "var(--border)",
-                    background: "var(--surface)",
-                    color: "var(--foreground)",
-                  }}
-                >
-                  <svg viewBox="0 0 20 20" aria-hidden="true" className="h-3.5 w-3.5 fill-current" style={{ color: "var(--icon-accent)" }}>
-                    <path d="M10 10a3.25 3.25 0 1 0-3.25-3.25A3.25 3.25 0 0 0 10 10Zm0 1.5c-3 0-5.5 1.63-5.5 3.75V16h11v-.75c0-2.12-2.5-3.75-5.5-3.75Z" />
-                  </svg>
-                  Profile
-                </Link>
-              )}
-              <div ref={accountRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setAccountOpen((v) => !v)}
-                  className="flex min-h-10 items-center gap-2 rounded-full border px-2 py-1 transition"
-                  style={{
-                    borderColor: "var(--border)",
-                    background: "var(--surface)",
-                  }}
-                >
-                  <div
-                    className="flex h-7 w-7 items-center justify-center rounded-full border"
-                    style={{
-                      borderColor: "var(--border)",
-                      background: "var(--surface-muted)",
-                      color: "var(--icon-accent)",
-                    }}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      className="h-4 w-4 fill-current"
-                    >
-                      <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-3.33 0-6 1.79-6 4v1h12v-1c0-2.21-2.67-4-6-4Z" />
-                    </svg>
-                  </div>
-                  <span
-                    className="max-w-[140px] truncate text-xs text-[var(--foreground)]"
-                    title={sessionLabel}
-                  >
-                    {sessionName}
-                  </span>
-                  <svg
-                    viewBox="0 0 20 20"
-                    aria-hidden="true"
-                    className={`h-3 w-3 transition ${accountOpen ? "rotate-180" : ""}`}
-                    style={{ color: "var(--icon-accent)" }}
-                  >
-                    <path fill="currentColor" d="M5.5 7.5 10 12l4.5-4.5" />
-                  </svg>
-                </button>
+  const closeMenu = () => { setMenuOpen(false); requestAnimationFrame(() => menuButton.current?.focus()); };
+  const isActive = pathname === "/leaderboard";
 
-                {accountOpen ? (
-                  <div
-                    className="absolute right-0 top-[calc(100%+8px)] z-20 w-44 rounded-xl border p-1.5 shadow-[0_18px_40px_var(--shadow)]"
-                    style={{
-                      borderColor: "var(--border)",
-                      background: "var(--surface-strong)",
-                    }}
-                  >
-                    <Link
-                      href={sessionUserId ? `/target/${sessionUserId}` : "#"}
-                      onClick={() => setAccountOpen(false)}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
-                    >
-                      <svg
-                        viewBox="0 0 20 20"
-                        aria-hidden="true"
-                        className="h-3.5 w-3.5 fill-current text-[var(--text-muted)]"
-                      >
-                        <path d="M10 10a3.25 3.25 0 1 0-3.25-3.25A3.25 3.25 0 0 0 10 10Zm0 1.5c-3 0-5.5 1.63-5.5 3.75V16h11v-.75c0-2.12-2.5-3.75-5.5-3.75Z" />
-                      </svg>
-                      Profile
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await fetch("/api/auth/logout", { method: "POST" });
-                        setSessionLabel("Guest");
-                        setSessionName("Guest");
-                        setAccountOpen(false);
-                        router.push("/");
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
-                    >
-                      <svg
-                        viewBox="0 0 20 20"
-                        aria-hidden="true"
-                        className="h-3.5 w-3.5 fill-current text-[var(--text-muted)]"
-                      >
-                        <path d="M8.5 3.5a.75.75 0 0 1 0 1.5H5.75v10H8.5a.75.75 0 0 1 0 1.5H5a.75.75 0 0 1-.75-.75V4.25A.75.75 0 0 1 5 3.5Zm4.72 2.22a.75.75 0 0 1 1.06 0l3.75 3.75a.75.75 0 0 1 0 1.06l-3.75 3.75a.75.75 0 1 1-1.06-1.06l2.47-2.47H8a.75.75 0 0 1 0-1.5h7.69l-2.47-2.47a.75.75 0 0 1 0-1.06Z" />
-                      </svg>
-                      Log out
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </>
-          )}
-        </div>
+  return <>
+    <header className="enlive-header">
+      <Link href="/leaderboard" aria-label="EnLive leaderboard" className="shrink-0">
+        <Image src={EnliveLogo} alt="EnLive" height={60} width={180} className="block h-auto w-28 object-contain sm:w-32" priority />
+      </Link>
+      <div className="hidden items-center gap-1 md:flex">
+        <Link href="/leaderboard" className={`enlive-header-link ${isActive ? "enlive-header-link-active" : ""}`}>Leaderboard</Link>
+        <Link href="/pricing" className="enlive-header-link">Plans</Link>
+        {headerMode === "public" && !session ? <Link href="/users/auth/login" className="enlive-header-link">Login</Link> : null}
+      </div>
+      <div className="flex items-center gap-2">
+        {session ? <Link href={`/target/${session.id}`} className="hidden max-w-40 truncate text-xs font-medium text-[var(--text-secondary)] sm:block">{session.name}</Link> : null}
+        <button ref={menuButton} type="button" onClick={() => setMenuOpen(true)} aria-expanded={menuOpen} aria-controls="enlive-navigation" aria-label="Open navigation menu" className="enlive-menu-trigger">
+          <span /><span /><span />
+        </button>
       </div>
     </header>
-  );
+    <div id="enlive-navigation" role="dialog" aria-modal="true" aria-label="Navigation" className={`enlive-menu ${menuOpen ? "enlive-menu-open" : ""}`} aria-hidden={!menuOpen} inert={!menuOpen}>
+      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close navigation menu" tabIndex={menuOpen ? 0 : -1} onClick={closeMenu} />
+      <aside className="enlive-menu-panel">
+        <div className="flex items-center justify-between border-b border-[var(--border)] pb-5">
+          <span className="enlive-eyebrow">Navigation</span>
+          <button type="button" onClick={closeMenu} aria-label="Close navigation menu" className="enlive-menu-trigger"><span /><span /><span /></button>
+        </div>
+        <nav className="mt-8 space-y-8" aria-label="Main navigation">
+          <MenuGroup title="Explore">{explore.map((item) => <MenuLink key={item} href="/leaderboard" onClick={closeMenu} active={item === "Leaderboard" && isActive}>{item}</MenuLink>)}</MenuGroup>
+          <MenuGroup title="Business">
+            {session ? <MenuLink href={`/target/${session.id}`} onClick={closeMenu}>My profile</MenuLink> : <MenuLink href="/users/auth/login" onClick={closeMenu}>Login</MenuLink>}
+            <MenuLink href="/pricing" onClick={closeMenu}>Subscription plans</MenuLink>
+          </MenuGroup>
+          <MenuGroup title="About">
+            <MenuLink href="/contributors" onClick={closeMenu}>Credits</MenuLink>
+            <ThemeToggle variant="menu" />
+          </MenuGroup>
+          {session ? <button type="button" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); setSession(null); closeMenu(); router.push("/"); }} className="enlive-menu-item w-full text-left text-[var(--text-muted)]">Log out</button> : null}
+        </nav>
+      </aside>
+    </div>
+  </>;
 }
+
+function MenuGroup({ title, children }: { title: string; children: React.ReactNode }) { return <section><h2 className="enlive-eyebrow mb-2">{title}</h2><div>{children}</div></section>; }
+function MenuLink({ href, children, onClick, active = false }: { href: string; children: React.ReactNode; onClick: () => void; active?: boolean }) { return <Link href={href} onClick={onClick} className={`enlive-menu-item ${active ? "enlive-menu-item-active" : ""}`}>{children}</Link>; }
